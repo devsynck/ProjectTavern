@@ -2,7 +2,9 @@
 
 A high-fidelity, multimodal roleplay interface designed for the next generation of LLM-driven storytelling. manifest your imagination, anchor the souls of characters, and engage in visceral discourse within a premium glass-morphic environment.
 
-![Tavern Preview](public/preview.png) *(Placeholder: Manifest your own visual preview)*
+<img width="2559" height="1301" alt="image" src="https://github.com/user-attachments/assets/2fdf2ef1-72b0-4078-95e0-8d3287836002" />
+
+
 
 ---
 
