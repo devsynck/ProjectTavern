@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  tavern:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    restart: always
+
+# High-Fidelity Session Note:
+# You can now manifest the Tavern through a single 'docker compose up' ritual.

@@ -1,0 +1,153 @@
+:root {
+  --bg-color: #030303;
+  --bg-accent: #110e0a;
+  --surface-parchment: #fdfdf5;
+  --surface-parchment-dark: #f0e6d2;
+  --accent-gold: #c5a059;
+  --accent-amber: #ff8c00;
+  --accent-glow: rgba(255, 140, 0, 0.25);
+  --text-main: #e0e0e0;
+  --text-dark: #2c231a; /* For parchment */
+  --text-muted: #808080;
+  --border-rich: rgba(197, 160, 89, 0.2);
+  --sidebar-width: 280px;
+  
+  --font-serif: var(--font-crimson-pro), serif;
+  --font-sans: var(--font-inter), sans-serif;
+  
+  --glass-bg: rgba(20, 18, 14, 0.7);
+  --glass-border: rgba(197, 160, 89, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html, body {
+  min-height: 100vh;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.85)), url("/bg_tavern.png");
+  background-size: cover;
+  background-position: center;
+  z-index: -1;
+  filter: blur(2px) grayscale(0.2);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("https://www.transparenttextures.com/patterns/dark-matter.png"); /* Noise texture */
+  opacity: 0.1;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.3);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent-gold);
+  border: 3px solid rgba(0,0,0,0.5);
+  border-radius: 10px;
+}
+
+/* Premium Parchment Style (CLASSIC LIGHT) */
+.parchment {
+  background-color: var(--surface-parchment);
+  background-image: url("https://www.transparenttextures.com/patterns/vintage-speckles.png");
+  color: #2c231a;
+  border: 1px solid #d4c1a1;
+  box-shadow: 
+    0 4px 15px rgba(0,0,0,0.3),
+    inset 0 0 40px rgba(139, 69, 19, 0.1);
+  border-radius: 4px;
+  position: relative;
+}
+
+/* Premium Obsidian Parchment (CHAT DARK) */
+.obsidianParchment {
+  background-color: #1a1612;
+  background-image: url("https://www.transparenttextures.com/patterns/dark-matter.png");
+  color: #d4c1a1;
+  border: 1px solid rgba(197, 160, 89, 0.2);
+  box-shadow: 
+    0 15px 45px rgba(0,0,0,0.8),
+    inset 0 0 60px rgba(0, 0, 0, 0.9);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Premium UI Elements */
+.sidebar-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid var(--glass-border);
+  box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+}
+
+.glow-gold {
+  color: var(--accent-gold);
+  text-shadow: 0 0 12px rgba(197, 160, 89, 0.4);
+}
+
+.btn-premium {
+  background: linear-gradient(to bottom, #d4af37, #aa8a1e);
+  color: #000;
+  font-weight: 700;
+  border: none;
+  border-radius: 2px;
+  padding: 10px 20px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #7a5e12, 0 8px 15px rgba(0,0,0,0.4);
+  transition: all 0.1s;
+}
+
+.btn-premium:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #7a5e12, 0 4px 10px rgba(0,0,0,0.4);
+}
+
+/* Animations */
+@keyframes atmosphericFade {
+  0% { opacity: 0; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.animate-entrance {
+  animation: atmosphericFade 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.95; }
+}
+
+.flicker {
+  animation: flicker 4s infinite ease-in-out;
+}

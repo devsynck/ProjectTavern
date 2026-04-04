@@ -1,0 +1,115 @@
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 2px solid var(--border-rich);
+  padding-bottom: 32px;
+}
+
+.layout {
+  display: flex;
+  gap: 48px;
+  align-items: flex-start;
+  flex: 1;
+  width: 100%;
+}
+
+.mainContent {
+  flex: 6; /* 60% approx */
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.sidebar {
+  flex: 4; /* 40% approx */
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 40px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+}
+
+.sectionTitle {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  color: var(--accent-gold);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.input {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  padding: 14px 18px;
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.2s;
+  resize: none;
+}
+
+textarea.input {
+  min-height: 200px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+/* Custom Obsidian Scrollbar for Textareas */
+textarea.input::-webkit-scrollbar {
+  width: 8px;
+}
+
+textarea.input::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+textarea.input::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 4px;
+}
+
+textarea.input::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-gold);
+}
+
+.input:focus {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 15px rgba(197, 160, 89, 0.1);
+}
