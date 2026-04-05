@@ -31,7 +31,7 @@ export default function EditCharModal({ isOpen, onClose, onSave, initialData }: 
         <header className={styles.header}>
           <div className={styles.titleWrapper}>
             <Sparkles className="glow-gold" size={20} />
-            <h2 className="glow-gold">Refine Soul Fragment</h2>
+            <h2 className="glow-gold">Edit Character Profile</h2>
           </div>
           <button className={styles.closeBtn} onClick={onClose}>
             <X size={20} />
@@ -40,7 +40,7 @@ export default function EditCharModal({ isOpen, onClose, onSave, initialData }: 
         
         <div className={styles.content} style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '32px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', textTransform: 'uppercase' }}>Companion Name</label>
+            <label style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', textTransform: 'uppercase' }}>Character Name</label>
             <input 
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '12px', color: '#fff', outline: 'none' }}
               value={formData.name || ""} 
@@ -49,19 +49,19 @@ export default function EditCharModal({ isOpen, onClose, onSave, initialData }: 
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', textTransform: 'uppercase' }}>Discourse Description</label>
+            <label style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', textTransform: 'uppercase' }}>Bio / Description</label>
             <textarea 
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '12px', color: '#fff', outline: 'none', minHeight: '120px', resize: 'vertical' }}
               value={formData.desc || formData.description || ""} 
               onChange={(e) => setFormData({ ...formData, desc: e.target.value, description: e.target.value })}
-              placeholder="Manifest a clearer image of this soul..."
+              placeholder="Enter character details, personality, etc..."
             />
           </div>
         </div>
         
         <footer className={styles.footer}>
           <button className={styles.cancelBtn} onClick={onClose}>Discard Changes</button>
-          <button className={styles.confirmBtn} onClick={handleSave} style={{ background: 'var(--accent-gold)', color: '#000' }}>Save Soul</button>
+          <button className={styles.confirmBtn} onClick={handleSave} style={{ background: 'var(--accent-gold)', color: '#000' }}>Save Profile</button>
         </footer>
       </div>
     </div>

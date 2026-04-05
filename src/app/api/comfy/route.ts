@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "ComfyUI Node URL missing." }, { status: 400 });
     }
 
-    // High-Fidelity Proxy Handshake: Channeling the payload to the local ComfyUI nodes
+    // API Proxy Request: Sending the payload to the local ComfyUI instance
     const response = await fetch(`${url}/prompt`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      return NextResponse.json({ error: `Manifestation Link Fracture: ${response.status}`, details: errorText }, { status: response.status });
+      return NextResponse.json({ error: `ComfyUI Connection Error: ${response.status}`, details: errorText }, { status: response.status });
     }
 
     const data = await response.json();
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
 
-    return NextResponse.json({ error: "Failed to bridge to ComfyUI nodes. Ensure the engine is active." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to connect to ComfyUI instance. Ensure the server is running." }, { status: 500 });
   }
 }
 
@@ -37,17 +37,17 @@ export async function GET(req: NextRequest) {
     const path = searchParams.get("path");
 
     if (!url || !path) {
-      return NextResponse.json({ error: "ComfyUI Bridge metadata missing." }, { status: 400 });
+      return NextResponse.json({ error: "ComfyUI configuration parameters missing." }, { status: 400 });
     }
 
-    // High-Fidelity Siphoning: Retrieving history or visual data from ComfyUI
+    // Fetching History: Retrieving history or image data from ComfyUI
     const response = await fetch(`${url}${path}`, {
       method: "GET",
       cache: "no-store"
     });
 
     if (!response.ok) {
-      return NextResponse.json({ error: `Manifestation Siphon Fracture: ${response.status}` }, { status: response.status });
+      return NextResponse.json({ error: `ComfyUI History Retrieval Error: ${response.status}` }, { status: response.status });
     }
 
     const data = await response.json();
@@ -55,6 +55,6 @@ export async function GET(req: NextRequest) {
 
   } catch (error: any) {
 
-    return NextResponse.json({ error: "Neural Rift Error during data siphoning." }, { status: 500 });
+    return NextResponse.json({ error: "Connection Error during data retrieval." }, { status: 500 });
   }
 }

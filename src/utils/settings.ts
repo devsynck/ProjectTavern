@@ -23,8 +23,8 @@ export const DEFAULT_SETTINGS: TavernSettings = {
   inferenceProvider: "OpenAI",
   comfyUrl: "http://127.0.0.1:8188",
   enableImageGen: true,
-  userName: "Traveller",
-  userPersona: "A mysterious traveller in the Tavern.",
+  userName: "User",
+  userPersona: "A user of Project Tavern.",
   userImage: "/characters/mystery.png",
   ttsProvider: "WebSpeech",
   ttsVoice: "",
@@ -32,13 +32,13 @@ export const DEFAULT_SETTINGS: TavernSettings = {
   kokoroVoice: "af_sky"
 };
 
-export interface TavernArchive {
+export interface TavernConfiguration {
   settings: TavernSettings;
   workflows: { id: string; name: string; json: string }[];
   defaultWorkflowId: string;
 }
 
-export const DEFAULT_ARCHIVE: TavernArchive = {
+export const DEFAULT_CONFIGURATION: TavernConfiguration = {
   settings: DEFAULT_SETTINGS,
   workflows: [
     { id: "default-wf", name: "Classic Portrait", json: '{"6":{"inputs":{"text":"masterpiece, high quality, 1human, portrait"},"class_type":"CLIPTextEncode"},"8":{"inputs":{"samples":["3",0],"vae":["4",0]},"class_type":"VAEDecode"}}' }
@@ -46,58 +46,58 @@ export const DEFAULT_ARCHIVE: TavernArchive = {
   defaultWorkflowId: "default-wf"
 };
 
-// Neural Cache: Synchronous access for UI components (Must be initialized via syncTavernArchive)
-let cachedArchive: TavernArchive | null = null;
+// Settings Cache: Synchronous access for UI components (Must be initialized via syncSettings)
+let cachedConfig: TavernConfiguration | null = null;
 
-export const syncTavernArchive = async (): Promise<TavernArchive> => {
-  if (typeof window === "undefined") return DEFAULT_ARCHIVE;
+export const syncSettings = async (): Promise<TavernConfiguration> => {
+  if (typeof window === "undefined") return DEFAULT_CONFIGURATION;
   
-  // 1. Attempt to siphon from the Neural Nexus (IndexedDB)
-  const idb = await tavernDB.get<TavernArchive>("settings", "archive");
+  // 1. Attempt to load from the Database (IndexedDB)
+  const idb = await tavernDB.get<TavernConfiguration>("settings", "archive");
   if (idb) {
-    cachedArchive = idb;
+    cachedConfig = idb;
     return idb;
   }
 
-  // 2. Migration Ritual: Siphon legacy localStorage if the Nexus is empty
+  // 2. Migration Process: Load legacy localStorage if the Database is empty
   const legacy = localStorage.getItem("tavern-settings");
   if (legacy) {
     try {
       const parsed = JSON.parse(legacy);
       const migrated = {
         settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
-        workflows: parsed.workflows || DEFAULT_ARCHIVE.workflows,
-        defaultWorkflowId: parsed.defaultWorkflowId || DEFAULT_ARCHIVE.defaultWorkflowId
+        workflows: parsed.workflows || DEFAULT_CONFIGURATION.workflows,
+        defaultWorkflowId: parsed.defaultWorkflowId || DEFAULT_CONFIGURATION.defaultWorkflowId
       };
       await tavernDB.set("settings", "archive", migrated);
-      localStorage.removeItem("tavern-settings"); // Neutralize legacy manifest
-      cachedArchive = migrated;
+      localStorage.removeItem("tavern-settings"); // Remove legacy settings
+      cachedConfig = migrated;
       return migrated;
     } catch (e) {}
   }
 
-  cachedArchive = DEFAULT_ARCHIVE;
-  return DEFAULT_ARCHIVE;
+  cachedConfig = DEFAULT_CONFIGURATION;
+  return DEFAULT_CONFIGURATION;
 };
 
-export const getTavernArchive = (): TavernArchive => {
-  if (typeof window === "undefined") return DEFAULT_ARCHIVE;
-  return cachedArchive || DEFAULT_ARCHIVE;
+export const getSettings = (): TavernConfiguration => {
+  if (typeof window === "undefined") return DEFAULT_CONFIGURATION;
+  return cachedConfig || DEFAULT_CONFIGURATION;
 };
 
 export const getTavernSettings = (): TavernSettings => {
-  return getTavernArchive().settings;
+  return getSettings().settings;
 };
 
-export const saveTavernArchive = async (archive: Partial<TavernArchive>) => {
+export const saveSettings = async (config: Partial<TavernConfiguration>) => {
   if (typeof window === "undefined") return;
-  const current = getTavernArchive();
+  const current = getSettings();
   const updated = {
-    settings: archive.settings ? { ...current.settings, ...archive.settings } : current.settings,
-    workflows: archive.workflows || current.workflows,
-    defaultWorkflowId: archive.defaultWorkflowId || current.defaultWorkflowId
+    settings: config.settings ? { ...current.settings, ...config.settings } : current.settings,
+    workflows: config.workflows || current.workflows,
+    defaultWorkflowId: config.defaultWorkflowId || current.defaultWorkflowId
   };
-  cachedArchive = updated;
+  cachedConfig = updated;
   await tavernDB.set("settings", "archive", updated);
   
   // Dispatch notification for visual sync across tabs
@@ -105,6 +105,6 @@ export const saveTavernArchive = async (archive: Partial<TavernArchive>) => {
 };
 
 export const saveTavernSettings = async (settings: Partial<TavernSettings>) => {
-  await saveTavernArchive({ settings: settings as any });
+  await saveSettings({ settings: settings as any });
 };
 

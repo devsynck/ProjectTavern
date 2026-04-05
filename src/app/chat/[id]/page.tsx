@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Send, Image as ImageIcon, Volume2, Wand2, Plus, Sparkles, Bot } from "lucide-react";
 import styles from "../chat.module.css";
 import { buildTavernPrompt, buildChatMessages } from "@/utils/promptBuilder";
-import { getTavernSettings, syncTavernArchive } from "@/utils/settings";
+import { getTavernSettings, syncSettings } from "@/utils/settings";
 import { useNotification } from "@/components/NotificationProvider";
 import { tavernDB } from "@/utils/db";
 
@@ -44,31 +44,31 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   };
 
   useEffect(() => {
-    const loadSessionArtifacts = async () => {
-      await syncTavernArchive();
+    const loadSessionConfigs = async () => {
+      await syncSettings();
       
-      // 1. Locate the Session Manifestation directly from the Neural Nexus
+      // 1. Locate the Active Session directly from the Database
       const activeSession = await tavernDB.get<any>("sessions", id);
 
       if (activeSession) {
-        // 2. Retrieve the Character Blueprint for this session from the Neural Nexus
+        // 2. Retrieve the Character Template for this session from the Database
         const charId = activeSession.charId;
-        const blueprint = await tavernDB.get<any>("blueprints", `session-template-${id}`) || 
+        const template = await tavernDB.get<any>("templates", `session-template-${id}`) || 
                           await tavernDB.get<any>("library", charId) || 
                           DEFAULT_CHARACTERS[charId];
         
-        if (blueprint) {
-          setCharacter(blueprint);
+        if (template) {
+          setCharacter(template);
         }
 
-        // 3. Load the specific Discourse History from the Neural Nexus (Chats store)
+        // 3. Load the specific Chat History from the Database (Chats store)
         const savedChat = await tavernDB.get<Message[]>("chats", id);
         if (savedChat) {
           setMessages(savedChat);
         } else {
-          const greeting = activeSession.lastMessage || blueprint?.first_mes || blueprint?.firstMessage;
+          const greeting = activeSession.lastMessage || template?.first_mes || template?.firstMessage;
           const initialMessages: Message[] = [
-            { sender: "System", content: `*A new manifestation of ${activeSession.name} begins.*`, type: "narrator" },
+            { sender: "System", content: `*A new conversation with ${activeSession.name} begins.*`, type: "narrator" },
             { sender: activeSession.name, content: replaceMacros(greeting, activeSession.name), type: "character", avatar: activeSession.image }
           ];
           setMessages(initialMessages);
@@ -76,16 +76,16 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         }
       }
     };
-    loadSessionArtifacts();
+    loadSessionConfigs();
   }, [id]);
 
   useEffect(() => {
-    const archiveManifest = async () => {
+    const saveChat = async () => {
       if (id && messages.length > 0) {
-        // A. Siphon discourse history into the Chats vault
+        // A. Save chat history into the storage
         await tavernDB.set("chats", id, messages);
         
-        // B. Anchor identity metadata into the Sessions store
+        // B. Save session details into the Sessions store
         const session = await tavernDB.get<any>("sessions", id);
         if (session) {
           const lastMsg = messages[messages.length - 1];
@@ -97,26 +97,26 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         }
       }
     };
-    archiveManifest();
+    saveChat();
   }, [messages, id]);
 
   const handleGenerateImage = async (index: number) => {
     const msg = messages[index];
     if (!msg || msg.isGeneratingImage) return;
 
-    // Load full archive for workflows
-    const archive = await syncTavernArchive();
-    const settings = archive.settings;
-    const { workflows, defaultWorkflowId } = archive;
+    // Load full settings for workflows
+    const config = await syncSettings();
+    const settings = config.settings;
+    const { workflows, defaultWorkflowId } = config;
 
     if (!settings.enableImageGen || !settings.comfyUrl) {
-      showNotification("Image Manifestation is not enabled.", "error");
+      showNotification("Image Generation is not enabled.", "error");
       return;
     }
 
     const workflow = workflows.find((w: any) => w.id === defaultWorkflowId) || workflows[0];
     if (!workflow) {
-      showNotification("No Manifestation Scroll (Workflow) found.", "error");
+      showNotification("No Generation Template (Workflow) found.", "error");
       return;
     }
 
@@ -127,17 +127,17 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       const charDescription = character.description || character.desc || "";
       const charPersonality = character.personality || "";
       
-      // 1.5. Ensure High-Fidelity Identity Blueprint exists
-      const blueprintKey = `tavern-id-blueprint-${character.id || character.name}`;
-      let identityBlueprint = await tavernDB.get<string>("blueprints", blueprintKey);
+      // 1.5. Ensure consistent visual profile exists
+      const visualProfileKey = `tavern-visual-profile-${character.id || character.name}`;
+      let visualProfile = await tavernDB.get<string>("templates", visualProfileKey);
 
       
-      if (!identityBlueprint) {
+      if (!visualProfile) {
 
         const idRequest = {
           messages: [
-            { role: "system", content: "You are a master of character archeology. Convert the provided character essence into a HIGH-FIDELITY, consistent physical description (facial features, hair style/color, eye shape/color, unique marks). This description MUST be used as a stable 'Identity Blueprint' for all future visual manifestations. Be extremely specific but unchanging. Output around 40-60 words." },
-            { role: "user", content: `Character Essence: ${charDescription}\nName: ${character.name}` }
+            { role: "system", content: "You are a master character designer. Convert the provided character details into a consistent physical description (facial features, hair style/color, eye shape/color, unique marks). This description MUST be used as a stable 'Visual Profile' for all future character images. Be extremely specific but unchanging. Output around 40-60 words." },
+            { role: "user", content: `Character Details: ${charDescription}\nName: ${character.name}` }
           ],
           settings: settings,
           modelId: settings.modelId || "glm-5",
@@ -146,17 +146,17 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         const idResp = await fetch(`/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(idRequest) });
         if (idResp.ok) {
           const idData = await idResp.json();
-          identityBlueprint = idData.choices[0].text.trim();
-          if (identityBlueprint) {
-            await tavernDB.set("blueprints", blueprintKey, identityBlueprint);
+          visualProfile = idData.choices[0].text.trim();
+          if (visualProfile) {
+            await tavernDB.set("templates", visualProfileKey, visualProfile);
           }
         }
       }
       
-      // High-Fidelity Fallback: If the blueprint is still a void, manifest a basic identity from essence
-      if (!identityBlueprint) {
+      // Fallback: If the profile is still missing, create a basic description from profile
+      if (!visualProfile) {
 
-        identityBlueprint = charDescription.substring(0, 200) || character.name;
+        visualProfile = charDescription.substring(0, 200) || character.name;
       }
 
       // Siphon context
@@ -169,21 +169,21 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         messages: [
           { 
             role: "system", 
-            content: `You are a master director and visual manifestation architect for the Z-IMAGE-TURBO engine. Your task is to curate a HIGH-FIDELITY, long-form natural language image prompt (100-150 words) that extract the visual essence of a character and scene.
+            content: `You are a master director and visual style architect for the Z-IMAGE-TURBO engine. Your task is to generate a high-quality, long-form natural language image prompt (100-150 words) that describes the visual details of a character and scene.
 
 STRUCTURE (Follow strictly):
-[Shot/Composition] + [Subject: ${identityBlueprint}] + [Action] + [Clothing/Details] + [Environment/Background] + [Lighting & Mood] + [Style/Medium] + [Exclusions].
+[Shot/Composition] + [Subject: ${visualProfile}] + [Action] + [Clothing/Details] + [Environment/Background] + [Lighting & Mood] + [Style/Medium] + [Exclusions].
 
 CRITICAL DIRECTIVES:
-- DIRECTIVE 1: You MUST Use the provided 'Identity Blueprint' for the Subject & Appearance to ensure high-fidelity character consistency.
-- DIRECTIVE 2: Determine the ERA and manifest attire/environment with historical and atmospheric accuracy. 
-- DIRECTIVE 3: Describe FABRICS and TEXTURES (Medieval linen, leather, silk). 
-- DIRECTIVE 4: Describe the ENVIRONMENT in detail.
+- DIRECTIVE 1: You MUST Use the provided 'Visual Profile' for the Subject & Appearance to ensure character consistency.
+- DIRECTIVE 2: Determine its ERA and describe attire/environment with historical and visual accuracy. 
+- DIRECTIVE 3: Describe materials and textures (linen, leather, silk). 
+- DIRECTIVE 4: Describe the environment in detail.
 - DIRECTIVE 5: Style should be 'Realistic Photography' or 'Painterly Masterpiece'.
 
-Output ONLY the curated blueprint.` 
+Output ONLY the generated prompt.` 
           },
-          { role: "user", content: `Identity Blueprint: ${identityBlueprint}\n\nRelevant Context:\n${sceneSummary}\n\nTarget Message to Manifest: ${msg.content}` }
+          { role: "user", content: `Visual Profile: ${visualProfile}\n\nRelevant Context:\n${sceneSummary}\n\nTarget Message to Generate: ${msg.content}` }
         ],
         settings: settings,
         modelId: settings.modelId || "glm-5",
@@ -198,14 +198,14 @@ Output ONLY the curated blueprint.`
 
       if (!promptResponse.ok) {
         const errorData = await promptResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || "Neural Oracle failed to curate prompt.");
+        throw new Error(errorData.error || "AI Provider failed to generate prompt.");
       }
       const promptData = await promptResponse.json();
       let curatedPrompt = promptData.choices?.[0]?.text?.trim()?.replace(/^Prompt: /i, "");
       
       if (!curatedPrompt) {
 
-        curatedPrompt = identityBlueprint;
+        curatedPrompt = visualProfile;
       }
       
 
@@ -214,7 +214,7 @@ Output ONLY the curated blueprint.`
       const promptBase = `masterpiece, best quality, ultra highres, ${curatedPrompt}`;
       let workflowJson = JSON.parse(workflow.json);
 
-      // Identify text nodes (CLIPTextEncode) and manifest the curated essence
+      // Identify text nodes (CLIPTextEncode) and apply the generated description
       for (const key in workflowJson) {
         if (workflowJson[key].class_type === "CLIPTextEncode") {
           workflowJson[key].inputs.text = promptBase;
@@ -230,7 +230,11 @@ Output ONLY the curated blueprint.`
         body: JSON.stringify({ url: settings.comfyUrl, payload: { prompt: workflowJson } })
       });
 
-      if (!response.ok) throw new Error("Manifestation link fractured.");
+      if (!response.ok) {
+        showNotification("Image Generation link failed.", "error");
+        setMessages(prev => prev.map((m, i) => i === index ? { ...m, isGeneratingImage: false } : m));
+        return;
+      }
       const { prompt_id } = await response.json();
 
       // 3. Poll for result
@@ -255,14 +259,14 @@ Output ONLY the curated blueprint.`
 
       if (imageUrl) {
         setMessages(prev => prev.map((m, i) => i === index ? { ...m, imageUrl, isGeneratingImage: false } : m));
-        showNotification("Neural Manifestation complete.", "success");
+        showNotification("Image generation complete.", "success");
       } else {
-        throw new Error("Manifestation timed out.");
+        throw new Error("Generation timed out.");
       }
 
     } catch (e) {
 
-      showNotification("Neural Manifestation failed. Ensure ComfyUI is active.", "error");
+      showNotification("Image generation failed. Ensure ComfyUI is active.", "error");
       setMessages(prev => prev.map((m, i) => i === index ? { ...m, isGeneratingImage: false } : m));
     }
   };
@@ -301,16 +305,16 @@ Output ONLY the curated blueprint.`
         })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const text = data.choices[0].text.trim();
-        setInput(text);
-        showNotification("Nature of the user manifest.", "success");
-      }
-    } catch (error) {
-
-      showNotification("The oracle failed to echo your voice.", "error");
-    } finally {
+        if (response.ok) {
+          const data = await response.json();
+          const text = data.choices[0].text.trim();
+          setInput(text);
+          showNotification("User response generated.", "success");
+        }
+      } catch (error) {
+  
+        showNotification("The AI failed to generate a response.", "error");
+      } finally {
       setIsTyping(false);
     }
   };
@@ -345,7 +349,7 @@ Output ONLY the curated blueprint.`
         userPersona: settings.userPersona
       }, updatedMessages);
 
-      // 3. Manifest the soul through the Tavern Proxy
+      // 3. Generate response through the proxy
       const response = await fetch(`/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -355,7 +359,7 @@ Output ONLY the curated blueprint.`
           modelId: settings.modelId || "glm-5",
           options: {
             max_tokens: 800,
-            stop: ["\nYou:", "\nUser:", "###"]
+            stop: ["\nYou:", "\nUser:", "###", `\n${character.name}:`]
           }
         })
       });
@@ -383,7 +387,7 @@ Output ONLY the curated blueprint.`
       setIsTyping(false);
       setMessages(prev => [...prev, { 
         sender: "System", 
-        content: "*The manifestation circle flickers. The connection to the soul has been lost. (Check your OpenAI Compatible Server settings & ensure host is active.)*", 
+        content: "*The connection to the character has been lost. (Check your AI Provider settings & ensure the host is active.)*", 
         type: "narrator" 
       }]);
     }
@@ -535,7 +539,7 @@ Output ONLY the curated blueprint.`
 
                       {msg.isGeneratingImage && (
                         <div style={{ alignSelf: displayType === "user" ? 'flex-end' : 'flex-start', color: 'var(--accent-gold)', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', border: '1px solid var(--glass-border)' }}>
-                          <Sparkles className="spin" size={14} /> <span>Manifesting nodes...</span>
+                          <Sparkles className="spin" size={14} /> <span>Generating image...</span>
                         </div>
                       )}
 
@@ -580,7 +584,7 @@ Output ONLY the curated blueprint.`
         <div className={styles.inputWrapper}>
           <textarea
             className={styles.textarea}
-            placeholder={isTyping ? "Universal manifestation in progress..." : "Type your story... (use * for actions)"}
+            placeholder={isTyping ? "Generating..." : "Type your story... (use * for actions)"}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}

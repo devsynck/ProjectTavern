@@ -11,7 +11,7 @@ import { parseCharacterPNG, extractCharacterData, fileToDataURL } from "@/utils/
 import EditCharModal from "@/components/EditCharModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import { tavernDB } from "@/utils/db";
-import { getTavernSettings, saveTavernSettings, syncTavernArchive } from "@/utils/settings";
+import { getTavernSettings, saveTavernSettings, syncSettings } from "@/utils/settings";
 
 // Cleaner utility to strip raw Tavern tags from snippets
 const cleanSnippet = (text: string) => {
@@ -54,44 +54,44 @@ export default function LibraryPage() {
   const { showNotification } = useNotification();
   const [isDragging, setIsDragging] = useState(false);
   const [characters, setCharacters] = useState<any[]>([]);
-  const [travelers, setTravelers] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"all" | "companions" | "travelers">("all");
+  const [userProfiles, setUserProfiles] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<"all" | "characters" | "user_profiles">("all");
   const [isEditing, setIsEditing] = useState(false);
   const [editingChar, setEditingChar] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [charToDelete, setCharToDelete] = useState<any>(null);
   const [manifestingIds, setManifestingIds] = useState<Set<string>>(new Set());
 
-  const syncSoulGallery = async () => {
+  const syncLibrary = async () => {
     const savedChars = await tavernDB.getAll<any>("library");
-    const savedTravelers = await tavernDB.getAll<any>("travelers");
-    const banishedIds = await tavernDB.getAll<string>("banished");
-    const banishedSet = new Set(banishedIds);
+    const savedUserProfiles = await tavernDB.getAll<any>("user_profiles");
+    const deletedIds = await tavernDB.getAll<string>("deleted");
+    const deletedSet = new Set(deletedIds);
     
-    // High-Fidelity Deduplication Ritual: Ensuring absolute unique-identity resonance
-    const masterSoulMap = new Map();
+    // High-Fidelity Deduplication Process: Ensuring absolute unique-identity alignment
+    const masterCharacterMap = new Map();
     
-    // Priority 1: Saved Souls (Neutralize latent templates and duplicates)
+    // Priority 1: Saved Characters (Neutralize latent templates and duplicates)
     savedChars.forEach(char => {
-      if (char && char.id && !char.id.startsWith("template-") && !banishedSet.has(char.id)) {
-        masterSoulMap.set(char.id, { ...char, type: 'companion' });
+      if (char && char.id && !char.id.startsWith("template-") && !deletedSet.has(char.id)) {
+        masterCharacterMap.set(char.id, { ...char, type: 'character' });
       }
     });
     
-    // Priority 2: Mock Souls (Only if the identity hasn't been banished)
+    // Priority 2: Default Characters (Only if the identity hasn't been deleted)
     MOCK_CHARACTERS.forEach(mock => {
-      if (!masterSoulMap.has(mock.id) && !banishedSet.has(mock.id)) {
-        masterSoulMap.set(mock.id, { ...mock, type: 'companion' });
+      if (!masterCharacterMap.has(mock.id) && !deletedSet.has(mock.id)) {
+        masterCharacterMap.set(mock.id, { ...mock, type: 'character' });
       }
     });
 
-    setCharacters(Array.from(masterSoulMap.values()));
-    setTravelers(savedTravelers.filter(t => !banishedSet.has(t.id)).map(t => ({ ...t, type: 'traveler' })));
+    setCharacters(Array.from(masterCharacterMap.values()));
+    setUserProfiles(savedUserProfiles.filter(t => !deletedSet.has(t.id)).map(t => ({ ...t, type: 'user_profile' })));
   };
 
   useEffect(() => {
-    syncTavernArchive();
-    syncSoulGallery();
+    syncSettings();
+    syncLibrary();
   }, []);
 
   const openDelete = (e: React.MouseEvent, char: any) => {
@@ -102,17 +102,17 @@ export default function LibraryPage() {
 
   const handleConfirmDelete = async () => {
     if (charToDelete) {
-      const bucket = charToDelete.type === "traveler" ? "travelers" : "library";
+      const bucket = charToDelete.type === "user_profile" ? "user_profiles" : "library";
       
       // A. Remove from primary archive
       await tavernDB.delete(bucket, charToDelete.id);
       
-      // B. Siphon into the Banishment vault to prevent Mock or blueprint re-manifestation
-      await tavernDB.set("banished", charToDelete.id, charToDelete.id);
+      // B. Add to the deletion list to prevent Default or blueprint re-creation
+      await tavernDB.set("deleted", charToDelete.id, charToDelete.id);
       
-      await syncSoulGallery();
+      await syncLibrary();
       
-      showNotification(`${charToDelete.name} has been vanished from the gallery.`, "success");
+      showNotification(`${charToDelete.name} has been removed from the library.`, "success");
       setCharToDelete(null);
     }
   };
@@ -125,10 +125,10 @@ export default function LibraryPage() {
   };
 
   const handleSaveEdit = async (updatedData: any) => {
-    const bucket = activeTab === "travelers" ? "travelers" : "library";
+    const bucket = activeTab === "user_profiles" ? "user_profiles" : "library";
     await tavernDB.set(bucket, updatedData.id, updatedData);
-    await syncSoulGallery();
-    showNotification(`${updatedData.name} refined and re-anchored.`, "success");
+    await syncLibrary();
+    showNotification(`${updatedData.name} updated and saved.`, "success");
   };
 
   const handleStartSession = async (char: any) => {
@@ -145,22 +145,22 @@ export default function LibraryPage() {
       type: 'session'
     };
 
-    // C. Auto-Identity Manifestation: Check for available USER cards (Travelers) 
-    const travelers = await tavernDB.getAll<any>("travelers");
-    if (travelers.length > 0) {
-      // Pick the most recently created Traveler
-      const mostRecentTraveler = travelers.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))[0];
+    // C. Auto-Identity Selection: Check for available USER profiles (User Profiles) 
+    const userProfiles = await tavernDB.getAll<any>("user_profiles");
+    if (userProfiles.length > 0) {
+      // Pick the most recently created Profile
+      const mostRecentProfile = userProfiles.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))[0];
       
       await saveTavernSettings({
-        userName: mostRecentTraveler.name,
-        userPersona: mostRecentTraveler.description || mostRecentTraveler.desc || mostRecentTraveler.persona || "",
-        userImage: mostRecentTraveler.image
+        userName: mostRecentProfile.name,
+        userPersona: mostRecentProfile.description || mostRecentProfile.desc || mostRecentProfile.persona || "",
+        userImage: mostRecentProfile.image
       });
 
     }
 
     await tavernDB.set("sessions", sessionId, newSession);
-    await tavernDB.set("blueprints", `session-template-${sessionId}`, char);
+    await tavernDB.set("templates", `session-template-${sessionId}`, char);
 
     window.dispatchEvent(new Event("tavern-sessions-updated"));
     router.push(`/chat/${sessionId}`);
@@ -175,27 +175,27 @@ export default function LibraryPage() {
     const { workflows, defaultWorkflowId } = savedMetadata ? JSON.parse(savedMetadata) : { workflows: [], defaultWorkflowId: "" };
 
     if (!settings.enableImageGen || !settings.comfyUrl) {
-      showNotification("Image Manifestation is not enabled in Visuals.", "error");
+      showNotification("Image Generation is not enabled in Visuals.", "error");
       return;
     }
 
     const workflow = workflows.find((w: any) => w.id === defaultWorkflowId) || workflows[0];
     if (!workflow) {
-      showNotification("No Manifestation Scroll (Workflow) found.", "error");
+      showNotification("No Generation Template (Workflow) found.", "error");
       return;
     }
 
     setManifestingIds(prev => new Set(prev).add(char.id));
     
     try {
-      // 1. Identity Blueprint Curation: Direct manifested handshake with the Neural Proxy
+      // 1. Character Description Generation: Direct generation handshake with the AI Proxy
       const charDescription = char.description || char.desc || "";
       const charPersonality = char.personality || "";
       
       const promptManifestRequest = {
         messages: [
-          { role: "system", content: "You are a master director and visual manifestation architect for the Z-IMAGE-TURBO engine. Your task is to curate a HIGH-FIDELITY, long-form natural language image prompt (100-150 words) for a character's PERMANENT AVATAR. Focus on: Physical appearance, iconic pose, and a neutral or thematic background. Use fantasy-appropriate textures. Output ONLY the curated blueprint." },
-          { role: "user", content: `Character Essence: ${charDescription}\nCharacter Personality: ${charPersonality}\nName: ${char.name}` }
+          { role: "system", content: "You are a master director and visual style architect for the Z-IMAGE-TURBO engine. Your task is to curate a HIGH-FIDELITY, long-form natural language image prompt (100-150 words) for a character's PERMANENT AVATAR. Focus on: Physical appearance, iconic pose, and a neutral or thematic background. Use photorealistic textures. Output ONLY the curated description." },
+          { role: "user", content: `Character Details: ${charDescription}\nCharacter Personality: ${charPersonality}\nName: ${char.name}` }
         ],
         settings: settings,
         modelId: settings.modelId || "glm-5",
@@ -203,7 +203,7 @@ export default function LibraryPage() {
       };
 
       const promptResponse = await fetch(`/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(promptManifestRequest) });
-      if (!promptResponse.ok) throw new Error("Neural Oracle failed to curate soul-blueprint.");
+      if (!promptResponse.ok) throw new Error("AI Provider failed to generate character profile.");
       const promptData = await promptResponse.json();
       const curatedPrompt = promptData.choices?.[0]?.text?.trim()?.replace(/^Prompt: /i, "");
       
@@ -256,20 +256,20 @@ export default function LibraryPage() {
           reader.readAsDataURL(blob);
         });
 
-        // 5. Anchor to the Neural Nexus
-        const isTraveler = char.type === "traveler";
-        const bucket = isTraveler ? "travelers" : "library";
+        // 5. Anchor to the Database
+        const isUserProfileModeSaved = char.type === "user_profile";
+        const bucket = isUserProfileModeSaved ? "user_profiles" : "library";
         const existing = await tavernDB.get<any>(bucket, char.id);
         
         const updatedChar = { ...char, image: permanentUrl, timestamp: Date.now() };
         await tavernDB.set(bucket, char.id || Math.random().toString(36).substr(2, 9), updatedChar);
-        await syncSoulGallery();
+        await syncLibrary();
         
-        showNotification(`${char.name} has been visually manifest.`, "success");
+        showNotification(`${char.name} has been visually generated.`, "success");
       }
     } catch (e) {
 
-      showNotification("Soul manifestation ritual failed.", "error");
+      showNotification("Failed to generate character image.", "error");
     } finally {
       setManifestingIds(prev => {
         const next = new Set(prev);
@@ -279,25 +279,25 @@ export default function LibraryPage() {
     }
   };
 
-  const handleEquipTraveler = async (traveler: any) => {
+  const handleEquipProfile = async (profile: any) => {
     await saveTavernSettings({
-      userName: traveler.name,
-      userPersona: traveler.description || traveler.desc || traveler.persona || "",
-      userImage: traveler.image
+      userName: profile.name,
+      userPersona: profile.description || profile.desc || profile.persona || "",
+      userImage: profile.image
     });
-    showNotification(`You have manifest as ${traveler.name}.`, "success");
+    showNotification(`You are now using the profile ${profile.name}.`, "success");
     window.dispatchEvent(new Event("tavern-sessions-updated"));
   };
 
   const getFilteredItems = () => {
     if (activeTab === "all") {
       return [
-        ...characters.map(c => ({ ...c, type: 'companion' })),
-        ...travelers.map(t => ({ ...t, type: 'traveler' }))
+        ...characters.map(c => ({ ...c, type: 'character' })),
+        ...userProfiles.map(t => ({ ...t, type: 'user_profile' }))
       ].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     }
-    if (activeTab === "companions") return characters.map(c => ({ ...c, type: 'companion' }));
-    return travelers.map(t => ({ ...t, type: 'traveler' }));
+    if (activeTab === "characters") return characters.map(c => ({ ...c, type: 'character' }));
+    return userProfiles.map(t => ({ ...t, type: 'user_profile' }));
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -309,7 +309,7 @@ export default function LibraryPage() {
     setIsDragging(false);
   };
 
-  const manifestSoul = async (data: any, avatarUrl?: string) => {
+  const createCharacter = async (data: any, avatarUrl?: string) => {
     const extracted = extractCharacterData(data);
     let finalAvatar = avatarUrl || data.avatar || "/mystery.png";
     
@@ -337,7 +337,7 @@ export default function LibraryPage() {
     await tavernDB.set("library", newChar.id, newChar);
     const updated = await tavernDB.getAll<any>("library");
     setCharacters([...updated, ...MOCK_CHARACTERS.filter(m => !updated.find(s => s.id === m.id))]);
-    showNotification(`${newChar.name} has manifested in the gallery.`, "success");
+    showNotification(`${newChar.name} has been added to the library.`, "success");
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -349,18 +349,18 @@ export default function LibraryPage() {
     try {
       if (file.type === "application/json") {
         const text = await file.text();
-        manifestSoul(JSON.parse(text));
+        createCharacter(JSON.parse(text));
       } else if (file.type.startsWith("image/")) {
         const charData = await parseCharacterPNG(file);
         if (charData) {
           const dataUrl = await fileToDataURL(file);
-          manifestSoul(charData, dataUrl);
+          createCharacter(charData, dataUrl);
         } else {
           showNotification("This image has no character metadata.", "error");
         }
       }
     } catch (err) {
-      showNotification("Failed to read the manifestation scroll.", "error");
+      showNotification("Failed to read the character file.", "error");
     }
   };
 
@@ -394,7 +394,7 @@ export default function LibraryPage() {
     a.href = url;
     a.download = `${char.name}_v2.json`;
     a.click();
-    showNotification("Exact Spec V2 scroll achieved.", "success");
+    showNotification("Spec V2 export complete.", "success");
   };
 
   return (
@@ -409,46 +409,46 @@ export default function LibraryPage() {
         }}>
           <div style={{ textAlign: 'center' }}>
              <UserPlus size={64} className="glow-gold" style={{ marginBottom: '24px' }} />
-             <h2 className="glow-gold" style={{ fontSize: '2.5rem', fontFamily: 'var(--font-serif)', textTransform: 'uppercase' }}>Drop to Manifest</h2>
-             <p style={{ color: 'var(--text-main)', fontSize: '1.2rem' }}>Archiving external scrolls in the Tavern Library...</p>
+              <h2 className="glow-gold" style={{ fontSize: '2.5rem', fontFamily: 'var(--font-serif)', textTransform: 'uppercase' }}>Drop to Import</h2>
+              <p style={{ color: 'var(--text-main)', fontSize: '1.2rem' }}>Importing character files into the Library...</p>
           </div>
         </div>
       )}
 
       <header className={styles.header}>
         <div>
-          <h1 className={`${styles.title} glow-gold`}>Grand Archive</h1>
+          <h1 className={`${styles.title} glow-gold`}>Character Library</h1>
           <div className={styles.tabGroup}>
             <button 
               className={`${styles.tabToggle} ${activeTab === "all" ? styles.activeTab : ""}`}
               onClick={() => setActiveTab("all")}
             >
-              All Souls
+              All Profiles
             </button>
             <button 
-              className={`${styles.tabToggle} ${activeTab === "companions" ? styles.activeTab : ""}`}
-              onClick={() => setActiveTab("companions")}
+              className={`${styles.tabToggle} ${activeTab === "characters" ? styles.activeTab : ""}`}
+              onClick={() => setActiveTab("characters")}
             >
-              Companions
+              Characters
             </button>
             <button 
-              className={`${styles.tabToggle} ${activeTab === "travelers" ? styles.activeTab : ""}`}
-              onClick={() => setActiveTab("travelers")}
+              className={`${styles.tabToggle} ${activeTab === "user_profiles" ? styles.activeTab : ""}`}
+              onClick={() => setActiveTab("user_profiles")}
             >
-              Travelers
+              User Profiles
             </button>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-          {activeTab === "travelers" ? (
-            <button className="btn-premium" onClick={() => router.push("/create?type=traveler")}>
+          {activeTab === "user_profiles" ? (
+            <button className="btn-premium" onClick={() => router.push("/create?type=user_profile")}>
               <Plus size={18} />
-              <span>Add Traveler</span>
+              <span>Add Profile</span>
             </button>
           ) : (
             <Link href="/create" className="btn-premium">
               <Plus size={18} />
-              <span>Manifest Soul</span>
+              <span>Add Character</span>
             </Link>
           )}
         </div>
@@ -456,63 +456,63 @@ export default function LibraryPage() {
 
       <div className={styles.grid}>
         {getFilteredItems().map((item) => {
-          const isTraveler = item.type === 'traveler';
+          const isUserProfile = item.type === 'user_profile';
           const isCorrupted = item.image?.includes("{{char}}");
           const displayImage = item.image || "/mystery.png";
 
           return (
             <div 
               key={item.id} 
-              onClick={() => isTraveler ? handleEquipTraveler(item) : handleStartSession(item)} 
+              onClick={() => isUserProfile ? handleEquipProfile(item) : handleStartSession(item)} 
               className={`${styles.card} parchment`} 
-              style={{ cursor: 'pointer', borderColor: isTraveler ? 'var(--accent-gold)' : undefined }}
+              style={{ cursor: 'pointer', borderColor: isUserProfile ? 'var(--accent-gold)' : undefined }}
             >
               <div className={styles.imageWrapper}>
                 <Image src={displayImage} alt={item.name} fill className={styles.cardImage} />
                 <div className={styles.toolGroup}>
                   <button 
                     className={styles.exportBtn} 
-                    title={isTraveler ? "Refine Traveler" : "Refine Soul"} 
-                    onClick={(e) => { e.stopPropagation(); router.push(`/create?id=${item.id}${isTraveler ? '&type=traveler' : ''}`); }}
+                    title={isUserProfile ? "Edit Profile" : "Edit Character"} 
+                    onClick={(e) => { e.stopPropagation(); router.push(`/create?id=${item.id}${isUserProfile ? '&type=user_profile' : ''}`); }}
                   >
                     <Edit2 size={18} />
                   </button>
-                  {!isTraveler && (
+                  {!isUserProfile && (
                     <button 
                       className={styles.exportBtn} 
-                      title="Export Scroll" 
+                      title="Export JSON" 
                       onClick={(e) => { e.stopPropagation(); handleExport(item, e); }}
                     >
                       <Download size={18} />
                     </button>
                   )}
-                  <button className={styles.exportBtn} title="Invoke Manifestation" onClick={(e) => handleInvokeManifestation(item, e)}>
+                  <button className={styles.exportBtn} title="Generate Image" onClick={(e) => handleInvokeManifestation(item, e)}>
                     <Sparkles size={18} className={manifestingIds.has(item.id) ? "spin" : ""} />
                   </button>
-                  <button className={styles.exportBtn} title="Consign to Oblivion" onClick={(e) => openDelete(e, item)}>
+                  <button className={styles.exportBtn} title="Delete Profile" onClick={(e) => openDelete(e, item)}>
                     <Trash2 size={18} />
                   </button>
                 </div>
                 {manifestingIds.has(item.id) && (
                   <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', backdropFilter: 'blur(4px)', zIndex: 10 }}>
                     <Sparkles size={32} className="spin glow-gold" />
-                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '1px' }}>Manifesting...</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '1px' }}>Generating...</span>
                   </div>
                 )}
                 {item.type && activeTab === 'all' && (
                   <div style={{ 
                     position: 'absolute', bottom: '12px', left: '12px', 
                     background: 'rgba(0,0,0,0.7)', padding: '4px 12px', 
-                    fontSize: '0.7rem', color: isTraveler ? 'var(--accent-gold)' : 'var(--text-muted)',
+                    fontSize: '0.7rem', color: isUserProfile ? 'var(--accent-gold)' : 'var(--text-muted)',
                     borderRadius: '2px', textTransform: 'uppercase', letterSpacing: '1px', border: '1px solid var(--glass-border)'
                   }}>
-                    {item.type}
+                    {item.type.replace('_', ' ')}
                   </div>
                 )}
               </div>
               <div className={styles.cardOverlay}>
                 <h3 className={styles.cardName}>{item.name}</h3>
-                <p className={styles.cardDesc}>{cleanSnippet(item.description || item.desc || (isTraveler ? "Architect of discourse." : "A mysterious soul."))}</p>
+                <p className={styles.cardDesc}>{cleanSnippet(item.description || item.desc || (isUserProfile ? "User Profile" : "A mysterious profile."))}</p>
               </div>
             </div>
           );
@@ -523,10 +523,10 @@ export default function LibraryPage() {
         isOpen={isDeleting}
         onClose={() => setIsDeleting(false)}
         onConfirm={handleConfirmDelete}
-        title="Consign to Oblivion"
-        message="Are you sure you wish to permanently banish this soul from the library? This manifest cannot be recovered once lost to the void."
-        confirmText="Consign Soul"
-        cancelText="Preserve"
+        title="Delete Profile"
+        message="Are you sure you wish to permanently remove this profile from the library? This data cannot be recovered once deleted."
+        confirmText="Delete"
+        cancelText="Cancel"
       />
     </div>
   );

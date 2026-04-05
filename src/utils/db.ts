@@ -1,9 +1,9 @@
-// High-Fidelity IndexedDB Manifestation for Tavern Soul-Anchoring
-// Neutralizing the 'localStorage' Quota Fracture for high-fidelity visual archives.
+// IndexedDB persistence for Project Tavern profile and session storage.
+// Replaces localStorage to handle large message and image archives.
 
-const DB_NAME = "tavern-nexus";
+const DB_NAME = "project-tavern-db";
 const DB_VERSION = 3;
-const STORES = ["sessions", "chats", "library", "travelers", "settings", "blueprints", "banished"] as const;
+const STORES = ["sessions", "chats", "library", "user_profiles", "settings", "templates", "deleted"] as const;
 
 export type StoreName = (typeof STORES)[number];
 

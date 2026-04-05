@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Bot, Image as ImageIcon, Volume2, Save, Sliders, ShieldCheck, BrainCircuit } from "lucide-react";
 import styles from "./settings.module.css";
 import { useNotification } from "@/components/NotificationProvider";
-import { getTavernSettings, saveTavernArchive, syncTavernArchive, DEFAULT_SETTINGS } from "@/utils/settings";
+import { getTavernSettings, saveSettings, syncSettings, DEFAULT_CONFIGURATION } from "@/utils/settings";
 
 type SettingsTab = "Inference" | "Visuals" | "Speech" | "General";
 
@@ -20,15 +20,15 @@ export default function SettingsPage() {
   const [defaultWorkflowId, setDefaultWorkflowId] = useState<string>("default-wf");
   const [editingWorkflow, setEditingWorkflow] = useState<{ id: string; name: string; json: string } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState(DEFAULT_CONFIGURATION.settings);
 
   // Persistence Logic
   useEffect(() => {
     const init = async () => {
-      const loadedArchive = await syncTavernArchive();
-      setSettings(loadedArchive.settings);
-      setWorkflows(loadedArchive.workflows);
-      setDefaultWorkflowId(loadedArchive.defaultWorkflowId);
+      const loadedConfig = await syncSettings();
+      setSettings(loadedConfig.settings);
+      setWorkflows(loadedConfig.workflows);
+      setDefaultWorkflowId(loadedConfig.defaultWorkflowId);
     };
     init();
   }, []);
@@ -44,7 +44,7 @@ export default function SettingsPage() {
   const handleTestConnection = async () => {
     setTestStatus("testing");
     try {
-      // Secure Discovery Manifestation: Siphon the probe through the server-side proxy
+      // Connection Discovery: Probe the API through the server-side proxy
       const response = await fetch("/api/models", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -56,7 +56,7 @@ export default function SettingsPage() {
         const models = data.data.map((m: any) => m.id || m.name);
         setActiveModels(models);
         
-        // Auto-Discovery Manifestation: Siphon the first model ID into the Target field
+        // Auto-Discovery: Apply the first model ID into the Target field
         if (models.length > 0) {
           setSettings(prev => ({ ...prev, modelId: models[0] }));
         }
@@ -66,11 +66,11 @@ export default function SettingsPage() {
       } else {
         const errorData = await response.json();
         setTestStatus("error");
-        showNotification(errorData.error || "Failed to reach Oracle.", "error");
+        showNotification(errorData.error || "Failed to reach AI Provider.", "error");
       }
     } catch (e) {
       setTestStatus("error");
-      showNotification("Connection refused by archive proxy.", "error");
+      showNotification("Connection refused by API Gateway.", "error");
     }
   };
 
@@ -80,10 +80,10 @@ export default function SettingsPage() {
       const response = await fetch(`${settings.comfyUrl}/object_info`, { method: "GET" });
       if (response.ok) {
         setComfyStatus("success");
-        showNotification("ComfyUI Connection Crystalized", "success");
+        showNotification("ComfyUI Connection Established", "success");
       } else {
         setComfyStatus("error");
-        showNotification("Manifestation link fractured", "error");
+        showNotification("Image Generation link failed", "error");
       }
     } catch (e) {
       setComfyStatus("error");
@@ -121,8 +121,8 @@ export default function SettingsPage() {
   };
 
   const handleSave = async () => {
-    await saveTavernArchive({ settings, workflows, defaultWorkflowId });
-    showNotification("Grand Archive updated successfully", "success");
+    await saveSettings({ settings, workflows, defaultWorkflowId });
+    showNotification("Settings updated successfully", "success");
   };
 
   const tabs: { id: SettingsTab; icon: any }[] = [
@@ -137,15 +137,15 @@ export default function SettingsPage() {
       <header className={styles.settingsHeader}>
         <div>
           <h1 className="glow-gold" style={{ fontSize: '2.5rem', fontFamily: 'var(--font-serif)', letterSpacing: '2px' }}>
-            Grand Archive
+            System Settings
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            System Tuning & Engine Regulation
+            System Configuration & Engine Setup
           </p>
         </div>
         <button className="btn-premium" onClick={handleSave}>
           <Save size={18} style={{ marginRight: '10px' }} />
-          Save Record
+          Save Settings
         </button>
       </header>
 
@@ -175,7 +175,7 @@ export default function SettingsPage() {
               </div>
               
               <div className={styles.field}>
-                <label className={styles.label}>Neural Manifest Provider</label>
+                <label className={styles.label}>AI Provider</label>
                 <select 
                   className={styles.input} 
                   value={settings.inferenceProvider}
@@ -222,13 +222,13 @@ export default function SettingsPage() {
                   </button>
                 </div>
                 <p style={{ fontSize: '0.7rem', opacity: 0.5, marginTop: '4px' }}>
-                  {settings.inferenceProvider === "OpenRouter" ? "*OpenRouter uses the universal /api/v1 manifest." :
-                   "*Standard OpenAI-Compatible Oracles use /v1 chat endpoints."}
+                  {settings.inferenceProvider === "OpenRouter" ? "*OpenRouter uses the universal /api/v1 endpoint." :
+                   "*Standard OpenAI-Compatible API Providers use /v1 chat endpoints."}
                 </p>
               </div>
 
               <div className={styles.field}>
-                <label className={styles.label}>Neural Authorization (API Key)</label>
+                <label className={styles.label}>API Key (Bearer Token)</label>
                 <input 
                   className={styles.input} 
                   type="password"
@@ -239,7 +239,7 @@ export default function SettingsPage() {
               </div>
 
               <div className={styles.field}>
-                <label className={styles.label}>Target Neural Manifest (Model ID)</label>
+                <label className={styles.label}>AI Model (Model ID)</label>
                 <input 
                   className={styles.input} 
                   value={settings.modelId}
@@ -282,7 +282,7 @@ export default function SettingsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
               <section className={styles.section} style={{ background: 'rgba(197, 160, 89, 0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className={styles.title} style={{ marginBottom: 0 }}>Neural Image Manifestation</div>
+                  <div className={styles.title} style={{ marginBottom: 0 }}>AI Image Generation</div>
                   <div 
                     onClick={() => handleToggle("enableImageGen")}
                     style={{ 
@@ -299,12 +299,12 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                  Enable or disable real-time visual manifestation through the ComfyUI bridge.
+                  Enable or disable real-time AI image generation through the ComfyUI bridge.
                 </p>
               </section>
 
               <section className={styles.section}>
-                <div className={styles.title}>Visual Manifestation (ComfyUI)</div>
+                <div className={styles.title}>AI Image Generator (ComfyUI)</div>
                 <div className={styles.field}>
                   <label className={styles.label}>API Base URL</label>
                   <div style={{ display: 'flex', gap: '12px' }}>
@@ -327,7 +327,7 @@ export default function SettingsPage() {
                 
                 {comfyStatus === "success" && (
                   <div className={styles.statusBox} style={{ borderColor: '#4ade80' }}>
-                    <span style={{ color: '#4ade80', fontWeight: 700 }}>✓ Manifestation Link Stable</span>
+                    <span style={{ color: '#4ade80', fontWeight: 700 }}>✓ Image Generation Link Stable</span>
                   </div>
                 )}
                 {comfyStatus === "error" && (
@@ -339,9 +339,9 @@ export default function SettingsPage() {
 
               <section className={styles.section}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div className={styles.title} style={{ marginBottom: 0 }}>Workflow Architect</div>
+                  <div className={styles.title} style={{ marginBottom: 0 }}>Template Manager</div>
                   <button className="btn-premium" style={{ height: '36px', padding: '0 16px' }} onClick={openAddModal}>
-                    + New Scroll
+                    + New Template
                   </button>
                 </div>
                 
@@ -367,7 +367,7 @@ export default function SettingsPage() {
                           <Bot size={16} color={defaultWorkflowId === wf.id ? 'var(--accent-gold)' : '#888'} />
                           <span style={{ fontWeight: 700, color: defaultWorkflowId === wf.id ? 'var(--accent-gold)' : '#fff' }}>{wf.name}</span>
                         </div>
-                        {defaultWorkflowId === wf.id && <span style={{ fontSize: '0.6rem', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '1px' }}>Primary</span>}
+                        {defaultWorkflowId === wf.id && <span style={{ fontSize: '0.6rem', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '1px' }}>Default</span>}
                       </div>
                       
                       <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
@@ -376,14 +376,14 @@ export default function SettingsPage() {
                           style={{ padding: '4px 8px', fontSize: '0.7rem', flex: 1, textAlign: 'center', background: defaultWorkflowId === wf.id ? 'rgba(197, 160, 89, 0.2)' : 'transparent' }}
                           onClick={(e) => { e.stopPropagation(); setDefaultWorkflowId(wf.id); }}
                         >
-                          Set Primary
+                          Set Default
                         </button>
                         <button 
                           className={styles.input} 
                           style={{ padding: '4px 8px', fontSize: '0.7rem', flex: 1, textAlign: 'center', color: '#f87171' }}
                           onClick={(e) => deleteWorkflow(wf.id, e)}
                         >
-                          Destroy
+                          Delete
                         </button>
                       </div>
                     </div>
@@ -391,7 +391,7 @@ export default function SettingsPage() {
                 </div>
                 {workflows.length === 0 && (
                   <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>
-                    No manifestation scrolls found. Create one to enable visuals.
+                    No image generation templates found. Create one to enable visuals.
                   </div>
                 )}
               </section>
@@ -419,10 +419,10 @@ export default function SettingsPage() {
                     maxHeight: '90vh',
                     overflowY: 'auto'
                   }}>
-                    <h2 className="glow-gold" style={{ fontFamily: 'var(--font-serif)', textTransform: 'uppercase', letterSpacing: '2px' }}>Manifestation Scroll</h2>
+                    <h2 className="glow-gold" style={{ fontFamily: 'var(--font-serif)', textTransform: 'uppercase', letterSpacing: '2px' }}>Template Details</h2>
                     
                     <div className={styles.field}>
-                      <label className={styles.label}>Scroll Name</label>
+                      <label className={styles.label}>Template Name</label>
                       <input 
                         className={styles.input}
                         value={editingWorkflow.name}
@@ -447,7 +447,7 @@ export default function SettingsPage() {
 
                     <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
                       <button className="btn-premium" style={{ flex: 1 }} onClick={saveWorkflowFromModal}>
-                        Bind to Archive
+                        Save to Library
                       </button>
                       <button className={styles.input} style={{ flex: 1, cursor: 'pointer' }} onClick={() => setIsModalOpen(false)}>
                         Discard Changes
@@ -461,9 +461,9 @@ export default function SettingsPage() {
 
           {activeTab === "Speech" && (
             <section className={styles.section}>
-              <div className={styles.title}>Vocalization (TTS)</div>
+              <div className={styles.title}>Voice Provider (TTS)</div>
               <div className={styles.field}>
-                <label className={styles.label}>Acoustic Provider</label>
+                <label className={styles.label}>Voice Provider</label>
                 <select 
                   className={styles.input} 
                   value={settings.ttsProvider}
@@ -506,9 +506,9 @@ export default function SettingsPage() {
           {activeTab === "General" && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
               <section className={styles.section}>
-                <div className={styles.title}>Persona Manifestation (You)</div>
+                <div className={styles.title}>User Profile (You)</div>
                 <div className={styles.field}>
-                  <label className={styles.label}>True Name {"{{user}}"}</label>
+                  <label className={styles.label}>User Name {"{{user}}"}</label>
                   <input 
                     className={styles.input} 
                     value={settings.userName}
@@ -517,7 +517,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className={styles.field}>
-                  <label className={styles.label}>Avatar URI (Soul Reflection)</label>
+                  <label className={styles.label}>Avatar URI (User Avatar)</label>
                   <input 
                     className={styles.input} 
                     value={settings.userImage}
@@ -526,7 +526,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className={styles.field}>
-                  <label className={styles.label}>Persona Essence (Lore)</label>
+                  <label className={styles.label}>User Description (Bio)</label>
                   <textarea 
                     className={styles.input} 
                     style={{ minHeight: '120px' }}
@@ -538,7 +538,7 @@ export default function SettingsPage() {
               </section>
 
               <section className={styles.section}>
-                <div className={styles.title}>Interface Prefixes</div>
+                <div className={styles.title}>Chat Styling</div>
                 <div className={styles.field}>
                   <label className={styles.label}>Narrator Style</label>
                   <select className={styles.input}>

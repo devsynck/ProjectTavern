@@ -1,116 +1,116 @@
-# 🌌 Project Tavern: The Neural Nexus of Roleplay
+# 🌌 Project Tavern: AI-Driven Roleplay Interface
 
-A high-fidelity, multimodal roleplay interface designed for the next generation of LLM-driven storytelling. manifest your imagination, anchor the souls of characters, and engage in visceral discourse within a premium glass-morphic environment.
+A high-fidelity, multimodal roleplay interface designed for the next generation of LLM-driven storytelling. Create complex narratives, manage detailed character profiles, and engage in immersive conversations within a premium glass-morphic environment.
 
-![Tavern Preview](public/preview.png) *(Placeholder: Manifest your own visual preview)*
-
----
-
-## ✨ Key Manifestations (Features)
-
-### 🏺 Grand Archive & Soul Anchoring
-*   **Neural Nexus Storage**: Powered by IndexedDB, the Tavern bypasses the brittle 5MB limits of legacy storage. Manage massive character libraries and infinite discourse histories with absolute stability.
-*   **Spec V2 Character Support**: Seamlessly manifest souls from Tavern V2 `.png` cards or `.json` scrolls. 
-*   **Identity Architect**: Design high-fidelity **Companion Souls** (NPCs) or **Traveler Personas** (User Cards).
-*   **Auto-Identity Resonance**: The Tavern automatically clothes you in your most recently created Traveler persona when a new journey begins.
-
-### 🖼️ High-Fidelity Visual Manifestation
-*   **ComfyUI Neural Bridge**: Integrated server-side proxy for ComfyUI. Manifest stable, high-fidelity character portraits and scene imagery directly within the chat.
-*   **Identity Blueprinting**: Automated LLM-driven curation of visual character blueprints to ensure structural consistency across all manifestations.
-*   **Direct-to-Nexus Saves**: Generated images are automatically anchored to your persistent library as Base64 assets.
-
-### 🗣️ Vocal & Discourse Engine
-*   **Multimodal Oracle Proxy**: Universal support for OpenAI-compatible APIs (Z.ai, OpenRouter, Local Llama.cpp).
-*   **Vocal Echoes (TTS)**: High-fidelity speech manifestation via **Kokoro-TTS** or standard WebSpeech oracles.
-*   **Atmospheric Immersion**: Experience visceral storytelling with automatic italicized narration and bold-face dialogue.
+![Tavern Preview](public/preview.png)
 
 ---
 
-## 🛠️ Ritual of Initiation (Installation)
+## ✨ Key Features
+
+### 🏺 Character Library & Profile Management
+*   **Persistent Storage**: Powered by IndexedDB, the Tavern bypasses the 5MB limits of standard local storage. Manage extensive character libraries and infinite message histories with stability.
+*   **Spec V2 Character Support**: Seamlessly import characters from Tavern V2 `.png` cards or `.json` files.
+*   **Profile Editor**: Design high-fidelity **AI Characters** (NPCs) or **User Personas**.
+*   **Auto-Identity Alignment**: The Tavern automatically applies your most recently used User Persona when a new conversation begins.
+
+### 🖼️ High-Fidelity Image Generation
+*   **ComfyUI Integration**: Includes a built-in proxy for ComfyUI. Generate stable, high-fidelity character portraits and scene imagery directly within the chat.
+*   **Automated Prompting**: LLM-driven generation of visual character descriptions to ensure structural consistency across all portraits.
+*   **Persistent Image Storage**: Generated images are automatically saved to your local database as Base64 assets.
+
+### 🗣️ Voice & Message Engine
+*   **Universal API Proxy**: Robust support for OpenAI-compatible APIs (Z.ai, OpenRouter, local Llama.cpp).
+*   **Text-to-Speech (TTS)**: High-fidelity voice output via **Kokoro-TTS**, ElevenLabs, or standard WebSpeech APIs.
+*   **Dynamic Styling**: Immersive storytelling with automatic italicized narration and bold-face dialogue.
+
+---
+
+## 🛠️ Installation Guide
 
 ### 1. Prerequisites
-Ensure your local machine is prepared with the following essences:
+Ensure your local machine has the following requirements:
 *   **Node.js** (v18.0 or higher)
 *   **npm** (comes with Node)
-*   *Recommended*: A local LLM server (Llama.cpp, KoboldCPP) or a ComfyUI installation for visual manifestation.
+*   *Recommended*: A local LLM server (Llama.cpp, KoboldCPP) or a ComfyUI installation for image generation.
 
-### 2. Summon the Codebase
+### 2. Clone the Repository
 ```bash
 git clone https://github.com/your-username/project-tavern.git
 cd project-tavern
 ```
 
-### 3. Anchor Dependencies
+### 3. Install Dependencies
 ```bash
 npm install
 ```
 
-### 4. Manifest the Application
+### 4. Run the Application
 ```bash
 npm run dev
 ```
-Open your portal at [http://localhost:3000](http://localhost:3000).
+Access the application at [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## 📦 Neural Containerization (Docker)
+## 📦 Containerization (Docker)
 
-For those who wish to manifest the Tavern within a high-fidelity, isolated environment, dual Docker manifestation rituals are available.
+For those who wish to run Project Tavern within an isolated container, Docker compose and standalone options are available.
 
-### Manifest via Docker Compose (Recommended)
-This is the simplest ritual to archive the Tavern and its dependencies in a single motion.
+### Deploy via Docker Compose (Recommended)
+This is the simplest method to setup Project Tavern and its dependencies.
 
-1.  **Initiate the Manifestation**:
+1.  **Start Deployment**:
     ```bash
     docker compose up -d --build
     ```
-2.  **Portal Access**: The Tavern will be manifest at [http://localhost:3000](http://localhost:3000).
+2.  **Access the Interface**: The application will be available at [http://localhost:3000](http://localhost:3000).
 
-### Manifest via Standalone Docker
-If you prefer to architect the container manually:
+### Build Standalone Docker Image
+If you prefer to build the container manually:
 
-1.  **Build the High-Fidelity Image**:
+1.  **Build the Image**:
     ```bash
     docker build -t project-tavern .
     ```
-2.  **Execute the Ritual**:
+2.  **Run the Container**:
     ```bash
-    docker run -p 3000:3000 --name tavern-vessel project-tavern
+    docker run -p 3000:3000 --name project-tavern project-tavern
     ```
 
 ---
 
-## ⚙️ Configuration Rituals
+## ⚙️ Configuration
 
-1.  **Settings (Grand Archive Gear)**: Point the Tavern to your LLM or Comfy Oracles.
-2.  **Neural Proxy Persistence**: All character souls (IndexedDB) are Anchored to your browser's persistent nexus.
-3.  **Vocal Manifestation**: WebSpeech is manifest natively; Kokoro-TTS requires an external API node (configurable via Visuals).
+1.  **Settings**: Configure your AI model providers (OpenAI, OpenRouter, etc.) and ComfyUI endpoints.
+2.  **Persistence**: All character profiles and chat histories (IndexedDB) are saved to your browser's persistent storage.
+3.  **Voice Settings**: WebSpeech is available natively; Kokoro-TTS and other providers require external API nodes (configurable in Settings).
 
 ---
 
-## 📜 Neural Architecture
+## 📜 Technical Stack
 
 *   **Framework**: Next.js 16 (App Router & Turbopack)
-*   **Logic**: High-fidelity TypeScript
-*   **Persistence**: IndexedDB (The Neural Nexus)
-*   **Styling**: Premium Vanilla CSS (Glassmorphism & Obsidian Themes)
+*   **Language**: TypeScript
+*   **Database**: IndexedDB
+*   **Styling**: Vanilla CSS (Glassmorphism & Theme Support)
 *   **Icons**: Lucide React
 
 ---
 
 ## ⚖️ License
-Distributed under the MIT License. Manifest responsibly.
+Distributed under the MIT License. Use responsibly.
 
 ---
 
-## 🍵 Tribute of Gratitude (Donation)
+## 🍵 Support the Project
 
-If Project Tavern has manifest value in your journey, consider siphoning a small tribute to the Tavern Keeper. Your support ensures the continued high-fidelity evolution of the Neural Nexus.
+If Project Tavern has added value to your workflow, consider supporting the project. Your contributions ensure the continued development of this interface.
 
 [![Support Project Tavern](https://img.shields.io/badge/Donate-BITCOIN-orange?style=for-the-badge&logo=bitcoin)](bitcoin:bc1qpexehwqnm4huxztxn0kk33a2ps8gxj3rlef7xf)
 
-**Oracle (BTC Address):** `bc1qpexehwqnm4huxztxn0kk33a2ps8gxj3rlef7xf`
+**BTC Address:** `bc1qpexehwqnm4huxztxn0kk33a2ps8gxj3rlef7xf`
 
 ---
 
-> *"The ink of destiny is siphoned from the void. Every word a manifestation, every silence a world."* - The Tavern Keeper
+> *"Great stories start with a single prompt. Every message a memory, every silence a scene."*

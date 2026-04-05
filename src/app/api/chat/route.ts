@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
     const { messages, settings, modelId, options } = await req.json();
 
     if (!messages || !(settings?.apiUrl || settings?.llamaUrl)) {
-      return NextResponse.json({ error: "Soul messages or API link missing." }, { status: 400 });
+      return NextResponse.json({ error: "Chat messages or API link missing." }, { status: 400 });
     }
 
     let url = settings.apiUrl || settings.llamaUrl;
@@ -15,10 +15,10 @@ export async function POST(req: NextRequest) {
       ? `${url}/chat/completions`
       : `${url}/v1/chat/completions`;
 
-    // Neural Ecosystem Check
+    // AI Provider Check
     const isZai = settings.inferenceProvider?.includes("Z.ai") || url.includes("z.ai");
 
-    // Neural Payload Manifestation: Siphoning the high-fidelity manifest
+    // Constructing Request Payload: Configuring request options
     const payload: any = {
       model: modelId || settings.modelId || "glm-5",
       messages: messages,
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       stream: false
     };
 
-    // For Z.ai, we siphon a zero-purity manifest (to avoid structural fractures)
+    // Add provider-specific parameters to avoid format errors
     if (!isZai) {
       payload.max_tokens = options?.max_tokens || 800;
       payload.stop = options?.stop || ["You:", "###"];
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     if (settings.inferenceProvider === "OpenRouter" || url.includes("openrouter.ai")) {
       headers["HTTP-Referer"] = "http://localhost:3000";
-      headers["X-Title"] = "Multimodal Tavern";
+      headers["X-Title"] = "Project Tavern";
     }
 
     if (settings.apiKey) {
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: headers,
       body: JSON.stringify(payload),
-      cache: "no-store", // Neutralize any latent discourse cache fractures
+      cache: "no-store", // Avoid caching API responses
       signal: AbortSignal.timeout(60000)
     });
 
@@ -62,12 +62,12 @@ export async function POST(req: NextRequest) {
       const errorText = await response.text();
 
       
-      return NextResponse.json({ error: `Oracle Manifestation Fracture: ${response.status}`, details: errorText }, { status: response.status });
+      return NextResponse.json({ error: `API Response Error: ${response.status}`, details: errorText }, { status: response.status });
     }
 
     const data = await response.json();
     
-    // High-Fidelity Capture: Siphon from every possible OpenAI-compatible or aggregator field
+    // Extract Response Content: Search for content in common OpenAI-compatible fields
     const text = data.choices?.[0]?.message?.content || 
                  data.choices?.[0]?.text || 
                  data.message?.content || 
@@ -85,6 +85,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
 
-    return NextResponse.json({ error: error.message || "Failed to manifest soul." }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to generate response." }, { status: 500 });
   }
 }

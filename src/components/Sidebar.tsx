@@ -64,7 +64,7 @@ export default function Sidebar() {
 
       {sessions.length > 0 && (
         <div className={styles.sessions}>
-          <div className={styles.sectionTitle}>Recent Manifestations</div>
+          <div className={styles.sectionTitle}>Recent Conversations</div>
           <div className={styles.sessionList}>
             {sessions.slice(0, 8).map((session) => {
               const href = `/chat/${session.id}`;

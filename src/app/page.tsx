@@ -7,11 +7,13 @@ import { MessageSquare, Bot, Plus, X } from "lucide-react";
 import styles from "./sessions.module.css";
 import ConfirmModal from "@/components/ConfirmModal";
 import { tavernDB } from "@/utils/db";
+import { getTavernSettings, saveSettings, syncSettings, DEFAULT_CONFIGURATION } from "@/utils/settings";
 
 export default function Home() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [settings, setSettings] = useState(DEFAULT_CONFIGURATION.settings);
 
   const fetchSessions = async () => {
     let allSessions = await tavernDB.getAll<any>("sessions");
@@ -39,6 +41,11 @@ export default function Home() {
   };
 
   useEffect(() => {
+    const init = async () => {
+      const loadedConfig = await syncSettings();
+      setSettings(loadedConfig.settings);
+    };
+    init();
     fetchSessions();
   }, []);
 
@@ -66,19 +73,19 @@ export default function Home() {
         isOpen={isDeleting}
         onClose={() => setIsDeleting(false)}
         onConfirm={confirmDeletion}
-        title="Consign to Oblivion"
-        message="Are you sure you wish to permanently dismantle this manifestation? All progress and discourse history with this soul will be lost in the void."
-        confirmText="Consign Soul"
-        cancelText="Preserve"
+        title="Delete Conversation"
+        message="Are you sure you wish to permanently delete this conversation? All chat history with this character will be lost."
+        confirmText="Delete"
+        cancelText="Cancel"
       />
       <header className={styles.header}>
         <div className={styles.headerInfo}>
-          <h1 className="glow-gold">Active Discourses</h1>
-          <p>Resume your encounters within the Tavern</p>
+          <h1 className="glow-gold">Active Conversations</h1>
+          <p>Resume your interactions within the library</p>
         </div>
         <Link href="/library" className="btn-premium" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
           <Plus size={18} />
-          <span>New Manifestation</span>
+          <span>New Conversation</span>
         </Link>
       </header>
 
@@ -104,7 +111,7 @@ export default function Home() {
               <button 
                 className={styles.deleteBtn}
                 onClick={(e) => openDeleteModal(e, session.id)}
-                title="Consign to Oblivion"
+                title="Delete Chat"
               >
                 <X size={18} />
               </button>
@@ -113,8 +120,8 @@ export default function Home() {
         ))}
         {sessions.length === 0 && (
           <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--glass-border)', width: '100%' }}>
-             <p style={{ marginBottom: '24px' }}>The obsidian chamber is quiet. No active manifestations currently reside in this Tavern.</p>
-             <Link href="/library" className="btn-premium" style={{ display: 'inline-flex' }}>Summon Companion</Link>
+             <p style={{ marginBottom: '24px' }}>The library is empty. No active conversations currently exist.</p>
+             <Link href="/library" className="btn-premium" style={{ display: 'inline-flex' }}>Open Library</Link>
           </div>
         )}
       </div>
