@@ -125,25 +125,55 @@ export default function SettingsPage() {
                   className={styles.input} 
                   value={settings.inferenceProvider}
                   onChange={(e) => {
-                    const provider = e.target.value;
-                    let url = settings.apiUrl;
-                    let model = settings.modelId;
-                    if (provider === "Z.ai (General)") {
-                      url = "https://api.z.ai/api/paas/v4";
-                      model = "glm-5";
-                    } else if (provider === "OpenRouter") {
-                      url = "https://openrouter.ai/api/v1";
-                      model = "google/gemini-2.0-flash-lite-001";
-                    } else if (provider === "OpenAI") {
-                      url = "http://127.0.0.1:8080";
+                    const nextProvider = e.target.value;
+                    const prevProvider = settings.inferenceProvider;
+                    
+                    // 1. Save Current to Config Registry
+                    const updatedConfigs = {
+                      ...settings.providerConfigs,
+                      [prevProvider]: {
+                        apiUrl: settings.apiUrl,
+                        apiKey: settings.apiKey,
+                        modelId: settings.modelId
+                      }
+                    };
+
+                    // 2. Load Next from Config Registry with global defaults as fallback
+                    const defaultProviderConfigs = DEFAULT_CONFIGURATION.settings.providerConfigs;
+                    const nextConfig = updatedConfigs[nextProvider] || defaultProviderConfigs[nextProvider] || { apiUrl: "", apiKey: "", modelId: "" };
+                    
+                    // If the config existed but had an empty URL, still provide the default if available
+                    if (!nextConfig.apiUrl && defaultProviderConfigs[nextProvider]) {
+                      nextConfig.apiUrl = defaultProviderConfigs[nextProvider].apiUrl;
                     }
-                    setSettings(prev => ({ ...prev, inferenceProvider: provider, apiUrl: url, modelId: model }));
+                    if (!nextConfig.modelId && defaultProviderConfigs[nextProvider]) {
+                      nextConfig.modelId = defaultProviderConfigs[nextProvider].modelId;
+                    }
+
+                    setSettings(prev => ({ 
+                      ...prev, 
+                      inferenceProvider: nextProvider,
+                      apiUrl: nextConfig.apiUrl,
+                      apiKey: nextConfig.apiKey,
+                      modelId: nextConfig.modelId,
+                      providerConfigs: updatedConfigs
+                    }));
                   }}
                 >
-                  <option value="OpenAI">OpenAI Compatible Server (Llama.cpp, Ollama)</option>
-                  <option value="Z.ai (General)">Z.ai (Prepaid / General API)</option>
-                  <option value="OpenRouter">OpenRouter (Universal Aggregator)</option>
-                  <option value="Other">Custom API Gateway</option>
+                  <optgroup label="Local Inference Servers">
+                    <option value="Ollama">Ollama</option>
+                    <option value="Llama.cpp">Llama.cpp</option>
+                    <option value="LM Studio">LM Studio</option>
+                  </optgroup>
+                  <optgroup label="Cloud & Aggregators">
+                    <option value="OpenRouter">OpenRouter</option>
+                    <option value="Z.AI">Z.AI</option>
+                    <option value="Groq">Groq</option>
+                    <option value="Together">Together AI</option>
+                    <option value="Mistral">Mistral AI</option>
+                    <option value="Gemini">Google Gemini</option>
+                    <option value="Custom">OpenAI Compatible Server</option>
+                  </optgroup>
                 </select>
               </div>
 

@@ -255,13 +255,25 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
         // 3. Load the specific Chat History from the Database (Chats store)
         const savedChat = await tavernDB.get<Message[]>("chats", id);
-        if (savedChat) {
-          setMessages(savedChat);
-        } else {
+        
+        // 3.5. Sync character image from template into session and messages
+        if (template && template.image && activeSession.image !== template.image) {
+          await tavernDB.set("sessions", id, { ...activeSession, image: template.image });
+        }
+
+        if (savedChat && template) {
+          const syncedChat = savedChat.map(m => {
+            if (m.type === "character" && m.sender === template.name) {
+              return { ...m, avatar: template.image };
+            }
+            return m;
+          });
+          setMessages(syncedChat);
+        } else if (template) {
           const greeting = activeSession.lastMessage || template?.first_mes || template?.firstMessage;
           const initialMessages: Message[] = [
             { sender: "System", content: `*A new conversation with ${activeSession.name} begins.*`, type: "narrator" },
-            { sender: activeSession.name, content: replaceMacros(greeting, activeSession.name), type: "character", avatar: activeSession.image }
+            { sender: activeSession.name, content: replaceMacros(greeting, activeSession.name), type: "character", avatar: template.image || activeSession.image }
           ];
           setMessages(initialMessages);
           await tavernDB.set("chats", id, initialMessages);
@@ -292,8 +304,9 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     saveChat();
   }, [messages, id]);
 
-  const handleGenerateImage = async (index: number) => {
-    const msg = messages[index];
+  const handleGenerateImage = async (index: number, messagesOverride?: Message[]) => {
+    const currentMessages = messagesOverride || messages;
+    const msg = currentMessages[index];
     if (!msg || msg.isGeneratingImage) return;
 
     // Load full settings for workflows
@@ -726,7 +739,13 @@ Output ONLY the generated prompt.`
       const data = await response.json();
       const rawText = data.choices[0].text.trim();
       setIsTyping(false);
-      setMessages(prev => [...prev, { sender: character.name, content: rawText, type: "character", avatar: character.image }]);
+      const finalMessages: Message[] = [...updatedMessages, { sender: character.name, content: rawText, type: "character", avatar: character.image }];
+      setMessages(finalMessages);
+      
+      // Auto-Generation Hook
+      if (settings.autoGenerateImages) {
+        handleGenerateImage(finalMessages.length - 1, finalMessages);
+      }
     } catch (error) {
       setIsTyping(false);
       setMessages(prev => [...prev, { sender: "System", content: "*The connection was lost...*", type: "narrator" }]);
@@ -739,9 +758,11 @@ Output ONLY the generated prompt.`
         {messageList}
 
         {isTyping && character && (
-          <div className={styles.narrator} style={{ opacity: 0.5, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Loader2 className="spin" size={14} />
-            {isImpersonating ? `${currentUserName} is choosing words...` : `${character.name} is choosing words...`}
+          <div className={styles.typingIndicator}>
+            <Loader2 className="spin" size={16} />
+            <span className={styles.typingText}>
+              {isImpersonating ? `${currentUserName} is choosing words...` : `${character.name} is choosing words...`}
+            </span>
           </div>
         )}
         <div ref={messagesEndRef} />

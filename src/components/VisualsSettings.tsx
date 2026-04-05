@@ -149,6 +149,29 @@ export default function VisualsSettings() {
         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>
           Enable or disable real-time AI image generation through the ComfyUI bridge.
         </p>
+
+        <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>Auto-Generate Portrait</div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+              Automatically generate a new visual for every AI response.
+            </p>
+          </div>
+          <div 
+            onClick={() => handleToggle("autoGenerateImages")}
+            style={{ 
+              width: '50px', height: '26px', background: settings.autoGenerateImages ? 'rgba(197, 160, 89, 0.2)' : 'rgba(0,0,0,0.5)', 
+              borderRadius: '13px', padding: '3px', cursor: 'pointer', position: 'relative', transition: 'all 0.3s ease',
+              border: '1px solid var(--glass-border)'
+            }}
+          >
+            <div style={{ 
+              width: '18px', height: '18px', background: settings.autoGenerateImages ? 'var(--accent-gold)' : 'var(--text-muted)', 
+              borderRadius: '9px', transform: settings.autoGenerateImages ? 'translateX(24px)' : 'translateX(0)', 
+              transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)' 
+            }} />
+          </div>
+        </div>
       </section>
 
       <section className={styles.section}>

@@ -7,6 +7,7 @@ export interface TavernSettings {
   inferenceProvider: string;
   comfyUrl: string;
   enableImageGen: boolean;
+  autoGenerateImages: boolean;
   userName: string;
   userPersona: string;
   userImage: string;
@@ -14,6 +15,7 @@ export interface TavernSettings {
   ttsVoice: string;
   kokoroUrl: string;
   kokoroVoice: string;
+  providerConfigs: Record<string, { apiUrl: string; apiKey: string; modelId: string }>;
 }
 
 export const DEFAULT_SETTINGS: TavernSettings = {
@@ -23,13 +25,26 @@ export const DEFAULT_SETTINGS: TavernSettings = {
   inferenceProvider: "OpenAI",
   comfyUrl: "http://127.0.0.1:8188",
   enableImageGen: true,
+  autoGenerateImages: false,
   userName: "User",
   userPersona: "A user of Project Tavern.",
   userImage: "/characters/mystery.png",
   ttsProvider: "WebSpeech",
   ttsVoice: "",
   kokoroUrl: "http://localhost:8880/v1",
-  kokoroVoice: "af_sky"
+  kokoroVoice: "af_sky",
+  providerConfigs: {
+    "Ollama": { apiUrl: "http://localhost:11434/v1", apiKey: "", modelId: "llama3" },
+    "Llama.cpp": { apiUrl: "http://localhost:8080/v1", apiKey: "", modelId: "gpt-4o" },
+    "LM Studio": { apiUrl: "http://localhost:1234/v1", apiKey: "", modelId: "model-identifier" },
+    "OpenRouter": { apiUrl: "https://openrouter.ai/api/v1", apiKey: "", modelId: "openai/gpt-4o" },
+    "Z.AI": { apiUrl: "https://api.z.ai/api/paas/v4/", apiKey: "", modelId: "glm-4" },
+    "Mistral": { apiUrl: "https://api.mistral.ai/v1", apiKey: "", modelId: "mistral-large-latest" },
+    "Groq": { apiUrl: "https://api.groq.com/openai/v1", apiKey: "", modelId: "llama3-70b-8192" },
+    "Together": { apiUrl: "https://api.together.xyz/v1", apiKey: "", modelId: "mistralai/Mixtral-8x7B-Instruct-v0.1" },
+    "Gemini": { apiUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", apiKey: "", modelId: "gemini-2.0-flash" },
+    "Custom": { apiUrl: "http://127.0.0.1:8080/v1", apiKey: "", modelId: "" }
+  }
 };
 
 export interface TavernConfiguration {

@@ -197,3 +197,39 @@
   z-index: -1;
   pointer-events: none;
 }
+
+.typingIndicator {
+  composes: narrator;
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  animation: typingPulse 2s infinite ease-in-out;
+  color: var(--accent-gold) !important;
+  opacity: 0.8;
+}
+
+.typingText {
+  background: linear-gradient(
+    90deg, 
+    rgba(197, 160, 89, 0.8) 0%, 
+    rgba(255, 255, 255, 0.9) 50%, 
+    rgba(197, 160, 89, 0.8) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite linear;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 500;
+}
+
+@keyframes typingPulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.98); }
+  50% { opacity: 0.9; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
