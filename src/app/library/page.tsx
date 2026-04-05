@@ -11,7 +11,7 @@ import { parseCharacterPNG, extractCharacterData, fileToDataURL } from "@/utils/
 import EditCharModal from "@/components/EditCharModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import { tavernDB } from "@/utils/db";
-import { getTavernSettings, saveTavernSettings, syncSettings } from "@/utils/settings";
+import { getTavernSettings, saveTavernSettings, syncSettings, getSettings } from "@/utils/settings";
 
 // Cleaner utility to strip raw Tavern tags from snippets
 const cleanSnippet = (text: string) => {
@@ -170,9 +170,9 @@ export default function LibraryPage() {
     e.stopPropagation();
     if (manifestingIds.has(char.id)) return;
 
-    const settings = getTavernSettings();
-    const savedMetadata = localStorage.getItem("tavern-settings");
-    const { workflows, defaultWorkflowId } = savedMetadata ? JSON.parse(savedMetadata) : { workflows: [], defaultWorkflowId: "" };
+    const config = getSettings();
+    const settings = config.settings;
+    const { workflows, defaultWorkflowId } = config;
 
     if (!settings.enableImageGen || !settings.comfyUrl) {
       showNotification("Image Generation is not enabled in Visuals.", "error");

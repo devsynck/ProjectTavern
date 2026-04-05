@@ -35,8 +35,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
   const replaceMacros = (text: string, charName: string) => {
     if (!text) return "";
-    const savedSettings = localStorage.getItem("tavern-settings");
-    const settings = savedSettings ? JSON.parse(savedSettings).settings : { userName: "Traveller" };
+    const settings = getTavernSettings();
     
     return text
       .replaceAll("{{char}}", charName)
@@ -439,8 +438,7 @@ Output ONLY the generated prompt.`
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
   const handleSpeak = async (text: string) => {
-    const saved = localStorage.getItem("tavern-settings");
-    const settings = saved ? JSON.parse(saved).settings : {};
+    const settings = getTavernSettings();
     
     if (["Kokoro", "CosyVoice", "XTTSv2", "index-tts"].includes(settings.ttsProvider) && settings.kokoroUrl) {
       try {
