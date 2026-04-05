@@ -29,6 +29,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const [character, setCharacter] = useState<any>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isImpersonating, setIsImpersonating] = useState(false);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -275,6 +276,7 @@ Output ONLY the generated prompt.`
     if (!character || isTyping) return;
     
     setIsTyping(true);
+    setIsImpersonating(true);
     try {
       const settings = getTavernSettings();
       
@@ -316,6 +318,7 @@ Output ONLY the generated prompt.`
         showNotification("The AI failed to generate a response.", "error");
       } finally {
       setIsTyping(false);
+      setIsImpersonating(false);
     }
   };
 
@@ -560,7 +563,7 @@ Output ONLY the generated prompt.`
 
         {isTyping && character && (
           <div className={styles.narrator} style={{ opacity: 0.5 }}>
-            {character.name} is choosing words...
+            {isImpersonating ? `${currentUserName} is choosing words...` : `${character.name} is choosing words...`}
           </div>
         )}
         <div ref={messagesEndRef} />
