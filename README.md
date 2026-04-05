@@ -2,7 +2,10 @@
 
 A high-fidelity, multimodal roleplay interface designed for the next generation of LLM-driven storytelling. Create complex narratives, manage detailed character profiles, and engage in immersive conversations within a premium glass-morphic environment.
 
-<img width="2559" height="1301" alt="image" src="https://github.com/user-attachments/assets/2fdf2ef1-72b0-4078-95e0-8d3287836002" />
+![1](https://github.com/user-attachments/assets/a4cdca0e-868b-4dcd-9074-586f10e59f76)
+![2](https://github.com/user-attachments/assets/a43645bf-bb83-41a6-99f5-29d3b33e1b8b)
+![3](https://github.com/user-attachments/assets/63a6815e-f362-4734-bab6-88acb8e1891f)
+
 
 
 
