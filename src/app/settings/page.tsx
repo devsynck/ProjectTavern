@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bot, Image as ImageIcon, Volume2, Save, Sliders, ShieldCheck, BrainCircuit } from "lucide-react";
+import { BrainCircuit, Image as ImageIcon, Sparkles, Wand2, Plus, Volume2, Save, Trash2, Bot, Loader2, Upload, Sliders, ShieldCheck, ExternalLink } from "lucide-react";
 import styles from "./settings.module.css";
 import { useNotification } from "@/components/NotificationProvider";
 import { getTavernSettings, saveSettings, syncSettings, DEFAULT_CONFIGURATION } from "@/utils/settings";
 import VisualsSettings from "@/components/VisualsSettings";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
 
 type SettingsTab = "Inference" | "Visuals" | "Speech" | "General";
 
@@ -16,6 +15,8 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("Inference");
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [activeModels, setActiveModels] = useState<string[]>([]);
+  const [isGeneratingBio, setIsGeneratingBio] = useState(false);
+  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
   const [settings, setSettings] = useState(DEFAULT_CONFIGURATION.settings);
 
   // Persistence Logic
@@ -29,6 +30,116 @@ export default function SettingsPage() {
 
   const handleChange = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleImproveBio = async () => {
+    if (!settings.userPersona.trim()) return;
+    setIsGeneratingBio(true);
+    try {
+      const response = await fetch(`/api/chat`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            { role: "system", content: "You are a master character architect. Your task is to rewrite the provided user bio to be more descriptive, evocative, and suitable for a high-fidelity roleplay environment. Keep it around 50-80 words. Focus on essence, demeanor, and physical presence. Output ONLY the rewritten bio." },
+            { role: "user", content: `Current Bio: ${settings.userPersona}` }
+          ],
+          settings,
+          modelId: settings.modelId || "glm-5",
+          options: { temperature: 0.8, max_tokens: 300 }
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const refined = data.choices[0].text.trim();
+        handleChange("userPersona", refined);
+        showNotification("User bio has been refined by AI.", "success");
+      }
+    } catch (e) {
+      showNotification("AI Refinement failed.", "error");
+    } finally {
+      setIsGeneratingBio(false);
+    }
+  };
+
+  const handleGenerateUserAvatar = async () => {
+    const config = await syncSettings();
+    const s = config.settings;
+    if (!s.enableImageGen || !s.comfyUrl) {
+      showNotification("Image Gen is disabled in Visuals.", "error"); return;
+    }
+    const workflow = config.workflows.find((w: any) => w.id === config.defaultWorkflowId) || config.workflows[0];
+    if (!workflow) {
+      showNotification("No workflow template found.", "error"); return;
+    }
+
+    setIsGeneratingAvatar(true);
+    try {
+      const promptResp = await fetch(`/api/chat`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            { role: "system", content: "Create a detailed, high-quality visual description (100 words) for a user's profile icon based on their description. Focus on lighting, textures, and neutral backdrop. Output ONLY the prompt." },
+            { role: "user", content: `User Description: ${settings.userPersona}\nName: ${settings.userName}` }
+          ],
+          settings,
+          modelId: settings.modelId || "glm-5",
+          options: { max_tokens: 200 }
+        })
+      });
+      const pData = await promptResp.json();
+      const curatedPrompt = pData.choices[0].text.trim();
+      
+      let workflowJson = JSON.parse(workflow.json);
+      for (const key in workflowJson) {
+        if (workflowJson[key].class_type === "CLIPTextEncode") {
+          workflowJson[key].inputs.text = `masterpiece, ultra highres, ${curatedPrompt}`;
+        }
+      }
+
+      const comfyResp = await fetch(`/api/comfy`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: s.comfyUrl, payload: { prompt: workflowJson } })
+      });
+      const { prompt_id } = await comfyResp.json();
+
+      let imageUrl = "";
+      for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const hResp = await fetch(`/api/comfy?url=${encodeURIComponent(s.comfyUrl)}&path=/history/${prompt_id}`);
+        const hData = await hResp.json();
+        if (hData[prompt_id]) {
+          const outputs = hData[prompt_id].outputs;
+          for (const nk in outputs) { if (outputs[nk].images) { const img = outputs[nk].images[0]; imageUrl = `${s.comfyUrl}/view?filename=${img.filename}&subfolder=${img.subfolder}&type=${img.type}`; break; } }
+          if (imageUrl) break;
+        }
+      }
+
+      if (imageUrl) {
+        const iR = await fetch(imageUrl); const blob = await iR.blob();
+        const reader = new FileReader();
+        const permanentUrl: string = await new Promise((res) => {
+          reader.onload = () => res(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+        handleChange("userImage", permanentUrl);
+        showNotification("AI Avatar generated and mapped.", "success");
+      }
+    } catch (e) {
+      showNotification("AI Avatar generation failed.", "error");
+    } finally {
+      setIsGeneratingAvatar(false);
+    }
+  };
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      handleChange("userImage", reader.result as string);
+      showNotification("Identity portrait updated.", "success");
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleTestConnection = async () => {
@@ -303,35 +414,70 @@ export default function SettingsPage() {
 
           {activeTab === "General" && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-              <section className={styles.section}>
-                <div className={styles.title}>User Profile (You)</div>
-                <div className={styles.field}>
-                  <label className={styles.label}>User Name {"{{user}}"}</label>
-                  <input 
-                    className={styles.input} 
-                    value={settings.userName}
-                    onChange={(e) => handleChange("userName", e.target.value)}
-                    placeholder="Your primary name..."
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label className={styles.label}>Avatar URI (User Avatar)</label>
-                  <input 
-                    className={styles.input} 
-                    value={settings.userImage}
-                    onChange={(e) => handleChange("userImage", e.target.value)}
-                    placeholder="/path/to/your/avatar.png"
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label className={styles.label}>User Description (Bio)</label>
-                  <textarea 
-                    className={styles.input} 
-                    style={{ minHeight: '120px' }}
-                    value={settings.userPersona}
-                    onChange={(e) => handleChange("userPersona", e.target.value)}
-                    placeholder="Describe your essence, history, or demeanor..."
-                  />
+              <section className={styles.section} style={{ background: 'rgba(197, 160, 89, 0.05)' }}>
+                <div className={styles.title}>User Identity (You)</div>
+                <div style={{ display: 'flex', gap: '32px' }}>
+                  <div style={{ flex: '0 0 160px' }}>
+                    <div style={{ 
+                      position: 'relative', width: '160px', height: '160px', 
+                      background: 'rgba(0,0,0,0.5)', borderRadius: '4px', overflow: 'hidden',
+                      border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                      marginBottom: '12px'
+                    }}>
+                      <img src={settings.userImage} alt="Your Portrait" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {isGeneratingAvatar && (
+                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                          <Loader2 className="spin glow-gold" size={24} />
+                          <span style={{ fontSize: '0.6rem', color: 'var(--accent-gold)' }}>Visualizing...</span>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                       <button className="btn-premium" style={{ width: '100%', height: '32px', fontSize: '0.75rem' }} onClick={handleGenerateUserAvatar} disabled={isGeneratingAvatar}>
+                         <Sparkles size={14} /> <span>AI Generate</span>
+                       </button>
+                       <label className={styles.input} style={{ width: '100%', height: '32px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', padding: '0', cursor: 'pointer', background: 'rgba(255,255,255,0.05)' }}>
+                         <Upload size={14} /> <span>Upload</span>
+                         <input type="file" style={{ display: 'none' }} accept="image/*" onChange={handleAvatarUpload} />
+                       </label>
+                    </div>
+                  </div>
+
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div className={styles.field}>
+                      <label className={styles.label}>User Name {"{{user}}"}</label>
+                      <input 
+                        className={styles.input} 
+                        value={settings.userName}
+                        onChange={(e) => handleChange("userName", e.target.value)}
+                        placeholder="Your primary identity..."
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <label className={styles.label} style={{ marginBottom: 0 }}>Identity Bio (Essence)</label>
+                        <button 
+                          onClick={handleImproveBio} 
+                          disabled={isGeneratingBio}
+                          style={{ 
+                            background: 'rgba(197, 160, 89, 0.1)', border: '1px solid var(--glass-border)',
+                            color: 'var(--accent-gold)', borderRadius: '4px', padding: '2px 8px', fontSize: '0.7rem',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+                          }}
+                        >
+                          <Sparkles size={12} className={isGeneratingBio ? "spin" : ""} />
+                          <span>{isGeneratingBio ? "Refining..." : "AI Improve Bio"}</span>
+                        </button>
+                      </div>
+                      <textarea 
+                        className={styles.input} 
+                        style={{ minHeight: '136px' }}
+                        value={settings.userPersona}
+                        onChange={(e) => handleChange("userPersona", e.target.value)}
+                        placeholder="Define your traits for the AI to acknowledge..."
+                      />
+                    </div>
+                  </div>
                 </div>
               </section>
 
