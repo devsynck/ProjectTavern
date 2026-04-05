@@ -128,15 +128,14 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       const charPersonality = character.personality || "";
       
       // 1.5. Ensure consistent visual profile exists
-      const visualProfileKey = `tavern-visual-profile-${character.id || character.name}`;
-      let visualProfile = await tavernDB.get<string>("templates", visualProfileKey);
+      const appearanceProfileKey = `tavern-appearance-profile-${character.id || character.name}`;
+      let appearanceProfile = await tavernDB.get<string>("templates", appearanceProfileKey);
 
       
-      if (!visualProfile) {
-
+      if (!appearanceProfile) {
         const idRequest = {
           messages: [
-            { role: "system", content: "You are a master character designer. Convert the provided character details into a consistent physical description (facial features, hair style/color, eye shape/color, unique marks). This description MUST be used as a stable 'Visual Profile' for all future character images. Be extremely specific but unchanging. Output around 40-60 words." },
+            { role: "system", content: "You are a master character designer. Convert the provided character details into a consistent physical description (facial features, hair style/color, eye shape/color, unique marks). This description MUST be used as a stable 'Appearance Profile' for all future character images. Be extremely specific but unchanging. Output around 40-60 words." },
             { role: "user", content: `Character Details: ${charDescription}\nName: ${character.name}` }
           ],
           settings: settings,
@@ -146,17 +145,16 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         const idResp = await fetch(`/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(idRequest) });
         if (idResp.ok) {
           const idData = await idResp.json();
-          visualProfile = idData.choices[0].text.trim();
-          if (visualProfile) {
-            await tavernDB.set("templates", visualProfileKey, visualProfile);
+          appearanceProfile = idData.choices[0].text.trim();
+          if (appearanceProfile) {
+            await tavernDB.set("templates", appearanceProfileKey, appearanceProfile);
           }
         }
       }
       
       // Fallback: If the profile is still missing, create a basic description from profile
-      if (!visualProfile) {
-
-        visualProfile = charDescription.substring(0, 200) || character.name;
+      if (!appearanceProfile) {
+        appearanceProfile = charDescription.substring(0, 200) || character.name;
       }
 
       // Siphon context
@@ -165,17 +163,17 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         .map(m => `${m.sender}: ${m.content}`)
         .join("\n");
       
-      const promptManifestRequest = {
+      const imagePromptRequest = {
         messages: [
           { 
             role: "system", 
-            content: `You are a master director and visual style architect for the Z-IMAGE-TURBO engine. Your task is to generate a high-quality, long-form natural language image prompt (100-150 words) that describes the visual details of a character and scene.
+            content: `You are a professional prompt engineer. Your task is to generate a high-quality, long-form natural language image prompt (100-150 words) that describes the physical details of a character and scene.
 
 STRUCTURE (Follow strictly):
-[Shot/Composition] + [Subject: ${visualProfile}] + [Action] + [Clothing/Details] + [Environment/Background] + [Lighting & Mood] + [Style/Medium] + [Exclusions].
+[Shot/Composition] + [Subject: ${appearanceProfile}] + [Action] + [Clothing/Details] + [Environment/Background] + [Lighting & Mood] + [Style/Medium] + [Exclusions].
 
 CRITICAL DIRECTIVES:
-- DIRECTIVE 1: You MUST Use the provided 'Visual Profile' for the Subject & Appearance to ensure character consistency.
+- DIRECTIVE 1: You MUST Use the provided 'Appearance Profile' for the Subject & Appearance to ensure character consistency.
 - DIRECTIVE 2: Determine its ERA and describe attire/environment with historical and visual accuracy. 
 - DIRECTIVE 3: Describe materials and textures (linen, leather, silk). 
 - DIRECTIVE 4: Describe the environment in detail.
@@ -183,7 +181,7 @@ CRITICAL DIRECTIVES:
 
 Output ONLY the generated prompt.` 
           },
-          { role: "user", content: `Visual Profile: ${visualProfile}\n\nRelevant Context:\n${sceneSummary}\n\nTarget Message to Generate: ${msg.content}` }
+          { role: "user", content: `Appearance Profile: ${appearanceProfile}\n\nRelevant Context:\n${sceneSummary}\n\nTarget Message to Generate: ${msg.content}` }
         ],
         settings: settings,
         modelId: settings.modelId || "glm-5",
@@ -193,7 +191,7 @@ Output ONLY the generated prompt.`
       const promptResponse = await fetch(`/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(promptManifestRequest)
+        body: JSON.stringify(imagePromptRequest)
       });
 
       if (!promptResponse.ok) {
@@ -204,8 +202,7 @@ Output ONLY the generated prompt.`
       let curatedPrompt = promptData.choices?.[0]?.text?.trim()?.replace(/^Prompt: /i, "");
       
       if (!curatedPrompt) {
-
-        curatedPrompt = visualProfile;
+        curatedPrompt = appearanceProfile;
       }
       
 
@@ -265,7 +262,6 @@ Output ONLY the generated prompt.`
 
       if (imageUrl) {
         setMessages(prev => prev.map((m, i) => i === index ? { ...m, imageUrl, isGeneratingImage: false } : m));
-        showNotification("Image generation complete.", "success");
       } else {
         throw new Error("Generation timed out.");
       }
@@ -519,7 +515,7 @@ Output ONLY the generated prompt.`
                         <button 
                           className={styles.miniTool} 
                           onClick={() => handleGenerateImage(index)}
-                          title="Manifest Visual Echo"
+                          title="Generate Image"
                           style={{ 
                             opacity: 0.4, transition: 'all 0.2s', background: 'transparent',
                             border: 'none', color: 'var(--accent-gold)', cursor: 'pointer',
@@ -532,7 +528,7 @@ Output ONLY the generated prompt.`
                         <button 
                           className={styles.miniTool} 
                           onClick={() => handleSpeak(msg.content)}
-                          title="Manifest Vocal Echo"
+                          title="Speak Text"
                           style={{ 
                             opacity: 0.4, transition: 'all 0.2s', background: 'transparent',
                             border: 'none', color: 'var(--accent-gold)', cursor: 'pointer',
@@ -552,7 +548,7 @@ Output ONLY the generated prompt.`
 
                       {msg.imageUrl && (
                         <div className={styles.inlineImageWrapper} style={{ alignSelf: displayType === "user" ? 'flex-end' : 'flex-start', width: '70%', maxWidth: '400px' }}>
-                          <img src={msg.imageUrl} alt="Manifestation" style={{ width: '100%', borderRadius: '4px', border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} />
+                          <img src={msg.imageUrl} alt="Generated Image" style={{ width: '100%', borderRadius: '4px', border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} />
                         </div>
                       )}
                     </div>
@@ -579,7 +575,7 @@ Output ONLY the generated prompt.`
             className={styles.toolButton} 
             onClick={handleImpersonate} 
             disabled={isTyping}
-            title="Impersonate (Echo User)"
+            title="Impersonate User"
           >
             <Wand2 size={20} />
           </button>

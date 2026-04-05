@@ -53,11 +53,11 @@ export default function LlamaConsole() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {status === "Offline" ? (
                 <button className="btn-premium" style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={startServer}>
-                  <Play size={16} /> Summon Server
+                  <Play size={16} /> Start Server
                 </button>
               ) : (
                 <button className="btn-premium" style={{ width: '100%', background: '#d32f2f', color: '#fff', boxShadow: '0 4px 0 #b71c1c', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={stopServer}>
-                  <Square size={16} /> Halt Engine
+                  <Square size={16} /> Stop Server
                 </button>
               )}
               
@@ -93,7 +93,7 @@ export default function LlamaConsole() {
                   </span>
                 </div>
               ))}
-              {status === "Starting" && <div style={{ animation: 'pulse 1.5s infinite', color: 'var(--accent-gold)', marginTop: '8px' }}>Initializing neural manifolds...</div>}
+              {status === "Starting" && <div style={{ animation: 'pulse 1.5s infinite', color: 'var(--accent-gold)', marginTop: '8px' }}>Initializing engine...</div>}
             </div>
           </div>
         </div>

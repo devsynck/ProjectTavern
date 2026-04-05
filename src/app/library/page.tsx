@@ -60,7 +60,7 @@ export default function LibraryPage() {
   const [editingChar, setEditingChar] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [charToDelete, setCharToDelete] = useState<any>(null);
-  const [manifestingIds, setManifestingIds] = useState<Set<string>>(new Set());
+  const [generatingImageIds, setGeneratingImageIds] = useState<Set<string>>(new Set());
 
   const syncLibrary = async () => {
     const savedChars = await tavernDB.getAll<any>("library");
@@ -166,9 +166,9 @@ export default function LibraryPage() {
     router.push(`/chat/${sessionId}`);
   };
 
-  const handleInvokeManifestation = async (char: any, e: React.MouseEvent) => {
+  const handleGenerateImage = async (char: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (manifestingIds.has(char.id)) return;
+    if (generatingImageIds.has(char.id)) return;
 
     const config = getSettings();
     const settings = config.settings;
@@ -185,14 +185,14 @@ export default function LibraryPage() {
       return;
     }
 
-    setManifestingIds(prev => new Set(prev).add(char.id));
+    setGeneratingImageIds(prev => new Set(prev).add(char.id));
     
     try {
       // 1. Character Description Generation: Direct generation handshake with the AI Proxy
       const charDescription = char.description || char.desc || "";
       const charPersonality = char.personality || "";
       
-      const promptManifestRequest = {
+      const imagePromptRequest = {
         messages: [
           { role: "system", content: "You are a master director and visual style architect for the Z-IMAGE-TURBO engine. Your task is to curate a HIGH-FIDELITY, long-form natural language image prompt (100-150 words) for a character's PERMANENT AVATAR. Focus on: Physical appearance, iconic pose, and a neutral or thematic background. Use photorealistic textures. Output ONLY the curated description." },
           { role: "user", content: `Character Details: ${charDescription}\nCharacter Personality: ${charPersonality}\nName: ${char.name}` }
@@ -202,7 +202,7 @@ export default function LibraryPage() {
         options: { max_tokens: 150 }
       };
 
-      const promptResponse = await fetch(`/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(promptManifestRequest) });
+      const promptResponse = await fetch(`/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(imagePromptRequest) });
       if (!promptResponse.ok) throw new Error("AI Provider failed to generate character profile.");
       const promptData = await promptResponse.json();
       const curatedPrompt = promptData.choices?.[0]?.text?.trim()?.replace(/^Prompt: /i, "");
@@ -223,7 +223,7 @@ export default function LibraryPage() {
         body: JSON.stringify({ url: settings.comfyUrl, payload: { prompt: workflowJson } })
       });
 
-      if (!response.ok) throw new Error("Manifestation link fractured.");
+      if (!response.ok) throw new Error("Connection to image generator failed.");
       const { prompt_id } = await response.json();
 
       // 4. Poll for results
@@ -247,7 +247,7 @@ export default function LibraryPage() {
       }
 
       if (imageUrl) {
-        // Achievement: Manifest Image to Local Base64 for permanence
+        // Status: Convert image to local base64 for persistent storage
         const imgResp = await fetch(imageUrl);
         const blob = await imgResp.blob();
         const reader = new FileReader();
@@ -265,13 +265,13 @@ export default function LibraryPage() {
         await tavernDB.set(bucket, char.id || Math.random().toString(36).substr(2, 9), updatedChar);
         await syncLibrary();
         
-        showNotification(`${char.name} has been visually generated.`, "success");
+        showNotification(`${char.name} has been successfully generated.`, "success");
       }
     } catch (e) {
 
       showNotification("Failed to generate character image.", "error");
     } finally {
-      setManifestingIds(prev => {
+      setGeneratingImageIds(prev => {
         const next = new Set(prev);
         next.delete(char.id);
         return next;
@@ -486,14 +486,14 @@ export default function LibraryPage() {
                       <Download size={18} />
                     </button>
                   )}
-                  <button className={styles.exportBtn} title="Generate Image" onClick={(e) => handleInvokeManifestation(item, e)}>
-                    <Sparkles size={18} className={manifestingIds.has(item.id) ? "spin" : ""} />
+                  <button className={styles.exportBtn} title="Generate Image" onClick={(e) => handleGenerateImage(item, e)}>
+                    <Sparkles size={18} className={generatingImageIds.has(item.id) ? "spin" : ""} />
                   </button>
                   <button className={styles.exportBtn} title="Delete Profile" onClick={(e) => openDelete(e, item)}>
                     <Trash2 size={18} />
                   </button>
                 </div>
-                {manifestingIds.has(item.id) && (
+                {generatingImageIds.has(item.id) && (
                   <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', backdropFilter: 'blur(4px)', zIndex: 10 }}>
                     <Sparkles size={32} className="spin glow-gold" />
                     <span style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '1px' }}>Generating...</span>
