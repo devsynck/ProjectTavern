@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect, use } from "react";
+import { useState, useRef, useEffect, use, memo, useCallback, useMemo } from "react";
 import Image from "next/image";
-import { Send, Image as ImageIcon, Volume2, Wand2, Plus, Sparkles, Bot } from "lucide-react";
+import { Send, Image as ImageIcon, Volume2, Wand2, Plus, Sparkles, Bot, Loader2 } from "lucide-react";
 import styles from "../chat.module.css";
 import { buildTavernPrompt, buildChatMessages } from "@/utils/promptBuilder";
 import { getTavernSettings, syncSettings } from "@/utils/settings";
@@ -18,6 +18,195 @@ interface Message {
   isGeneratingImage?: boolean;
 }
 
+// 1. Memoized Dynamic Text Parser
+const DynamicText = memo(({ text }: { text: string }) => {
+  if (!text) return null;
+  const parts = text.split(/(\*.*?\*|".*?")/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith("*") && part.endsWith("*")) {
+          return (
+            <i key={i} style={{ color: "#94a3b8", fontStyle: "italic", fontWeight: 400 }}>
+              {part.slice(1, -1)}
+            </i>
+          );
+        } else if (part.startsWith('"') && part.endsWith('"')) {
+          return (
+            <b key={i} style={{ color: "#ffffff", fontWeight: 700 }}>{part}</b>
+          );
+        }
+        return <span key={i} style={{ color: "#e0e0e0" }}>{part}</span>;
+      })}
+    </>
+  );
+});
+DynamicText.displayName = "DynamicText";
+
+// 2. Memoized Message Component
+const ChatMessage = memo(({ 
+  msg, 
+  index, 
+  isUser, 
+  currentUserImage, 
+  onGenerateImage, 
+  onCancelGenerateImage,
+  onSpeak,
+  onStopSpeak,
+  isSpeakingAnywhere
+}: { 
+  msg: Message, 
+  index: number, 
+  isUser: boolean, 
+  currentUserImage: string,
+  onGenerateImage: (i: number) => void,
+  onCancelGenerateImage: (i: number) => void,
+  onSpeak: (t: string) => void,
+  onStopSpeak: () => void,
+  isSpeakingAnywhere: boolean
+}) => {
+  const displayType = isUser ? "user" : msg.type;
+
+  return (
+    <div className={styles.message}>
+      {displayType === "narrator" ? (
+        <p className={styles.narrator}><DynamicText text={msg.content} /></p>
+      ) : (
+        <div className={isUser ? styles.userWrapper : styles.charWrapper}>
+          {(msg.avatar || (isUser && currentUserImage)) && (
+            <div className={styles.avatarContainer}>
+              <Image src={msg.avatar || currentUserImage} alt={msg.sender} fill className={styles.avatar} />
+            </div>
+          )}
+          
+          <div className={styles.messageBody}>
+            <div className={styles.metadata}>
+              <span className={isUser ? styles.userName : styles.name} style={{ fontSize: '1.4rem' }}>
+                {msg.sender}
+              </span>
+            </div>
+            <div className={`${styles.content} ${isUser ? styles.userGlass : "obsidianParchment"}`}>
+              <DynamicText text={msg.content} />
+            </div>
+
+            <div className={styles.messageAddons} style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button className={styles.miniTool} onClick={() => onGenerateImage(index)} title="Generate Image"
+                  style={{ opacity: 0.4, transition: 'all 0.2s', background: 'transparent', border: 'none', color: 'var(--accent-gold)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <ImageIcon size={14} />
+                  <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Image</span>
+                </button>
+                {isSpeakingAnywhere ? (
+                  <button className={styles.miniTool} onClick={onStopSpeak} title="Stop Audio"
+                    style={{ opacity: 0.8, transition: 'all 0.2s', background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '12px' }}>
+                    <Loader2 className="spin" size={14} />
+                    <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Stop</span>
+                  </button>
+                ) : (
+                  <button className={styles.miniTool} onClick={() => onSpeak(msg.content)} title="Speak Text"
+                    style={{ opacity: 0.4, transition: 'all 0.2s', background: 'transparent', border: 'none', color: 'var(--accent-gold)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '12px' }}>
+                    <Volume2 size={14} />
+                    <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Speak</span>
+                  </button>
+                )}
+              </div>
+
+              {msg.isGeneratingImage && (
+                <div style={{ alignSelf: isUser ? 'flex-end' : 'flex-start', color: 'var(--accent-gold)', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', border: '1px solid var(--glass-border)' }}>
+                  <Sparkles className="spin" size={14} /> 
+                  <span>Generating image...</span>
+                  <button 
+                    onClick={() => onCancelGenerateImage(index)}
+                    style={{ 
+                      background: 'rgba(248, 113, 113, 0.2)', color: '#f87171', border: '1px solid #f8717133', 
+                      padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.6rem',
+                      marginLeft: '8px', textTransform: 'uppercase'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {msg.imageUrl && (
+                <div className={styles.inlineImageWrapper} style={{ alignSelf: isUser ? 'flex-end' : 'flex-start', width: '70%', maxWidth: '400px' }}>
+                  <img src={msg.imageUrl} alt="Generated Image" style={{ width: '100%', borderRadius: '4px', border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+ChatMessage.displayName = "ChatMessage";
+
+// 3. Memoized Input Area
+const ChatInput = memo(({ 
+  disabled, 
+  onSend, 
+  onImpersonate,
+  onStopSpeak,
+  isSpeakingAnywhere
+}: { 
+  disabled: boolean, 
+  onSend: (val: string) => void, 
+  onImpersonate: () => Promise<string | void>,
+  onStopSpeak: () => void,
+  isSpeakingAnywhere: boolean
+}) => {
+  const [input, setInput] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleAction = () => {
+    if (!input.trim() || disabled) return;
+    onSend(input);
+    setInput("");
+  };
+
+  const handleImpersonateClick = async () => {
+    const text = await onImpersonate();
+    if (text) setInput(text);
+  };
+
+  return (
+    <div className={styles.inputArea}>
+      <div className={styles.toolCluster}>
+        <button className={styles.toolButton} onClick={handleImpersonateClick} disabled={disabled} title="Impersonate User">
+          <Wand2 size={20} />
+        </button>
+        {isSpeakingAnywhere ? (
+          <button className={styles.toolButton} onClick={onStopSpeak} style={{ color: '#f87171' }} title="Stop Audio">
+            <Loader2 className="spin" size={20} />
+          </button>
+        ) : (
+          <button className={styles.toolButton} title="Audio Oracle">
+            <Volume2 size={20} />
+          </button>
+        )}
+      </div>
+      
+      <div className={styles.inputWrapper}>
+        <textarea
+          ref={textareaRef}
+          className={styles.textarea}
+          placeholder={disabled ? "Generating..." : "Type your story... (use * for actions)"}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleAction())}
+          rows={1}
+          disabled={disabled}
+        />
+        <button className={styles.sendButton} onClick={handleAction} disabled={disabled || !input.trim()}>
+          <Send size={20} className={disabled ? "spin" : ""} />
+        </button>
+      </div>
+    </div>
+  );
+});
+ChatInput.displayName = "ChatInput";
+
 const DEFAULT_CHARACTERS: Record<string, any> = {
   "barnaby": { name: "Barnaby", first_mes: "Welcome, traveller! You look like you've seen a few dusty roads today. Rest your boots by the fire.", image: "/characters/barnaby.png" },
   "elara": { name: "Elara", first_mes: "*She looks up from an old map.* Oh, fascinating timing. Are you also following the ley lines?", image: "/characters/elara.png" }
@@ -32,6 +221,9 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllers = useRef<Record<number, AbortController>>({});
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const replaceMacros = (text: string, charName: string) => {
     if (!text) return "";
@@ -121,6 +313,9 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     }
 
     // Mark as generating immediately
+    const controller = new AbortController();
+    abortControllers.current[index] = controller;
+    
     setMessages(prev => prev.map((m, i) => i === index ? { ...m, isGeneratingImage: true } : m));
 
     try {
@@ -191,7 +386,8 @@ Output ONLY the generated prompt.`
       const promptResponse = await fetch(`/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(imagePromptRequest)
+        body: JSON.stringify(imagePromptRequest),
+        signal: controller.signal
       });
 
       if (!promptResponse.ok) {
@@ -230,7 +426,8 @@ Output ONLY the generated prompt.`
       const response = await fetch(`/api/comfy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: settings.comfyUrl, payload: { prompt: workflowJson } })
+        body: JSON.stringify({ url: settings.comfyUrl, payload: { prompt: workflowJson } }),
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -258,6 +455,9 @@ Output ONLY the generated prompt.`
           }
           if (imageUrl) break;
         }
+
+        // Check for cancellation between polls
+        if (!abortControllers.current[index]) break;
       }
 
       if (imageUrl) {
@@ -266,12 +466,28 @@ Output ONLY the generated prompt.`
         throw new Error("Generation timed out.");
       }
 
-    } catch (e) {
-
-      showNotification("Image generation failed. Ensure ComfyUI is active.", "error");
+    } catch (e: any) {
+      if (e.name === "AbortError") {
+        showNotification("Generation cancelled.", "info");
+      } else {
+        showNotification("Image generation failed. Ensure ComfyUI is active.", "error");
+      }
       setMessages(prev => prev.map((m, i) => i === index ? { ...m, isGeneratingImage: false } : m));
+    } finally {
+      delete abortControllers.current[index];
     }
   };
+
+  const handleCancelGenerateImage = useCallback((index: number) => {
+    // 1. Abort the actual fetch calls if they exist
+    if (abortControllers.current[index]) {
+      abortControllers.current[index].abort();
+      delete abortControllers.current[index];
+    }
+    // 2. Immediately clear the UI state regardless of controller existence
+    setMessages(prev => prev.map((m, i) => i === index ? { ...m, isGeneratingImage: false } : m));
+    showNotification("Generation cancelled.", "info");
+  }, []);
 
   const handleImpersonate = async () => {
     if (!character || isTyping) return;
@@ -311,8 +527,7 @@ Output ONLY the generated prompt.`
         if (response.ok) {
           const data = await response.json();
           const text = data.choices[0].text.trim();
-          setInput(text);
-          showNotification("User response generated.", "success");
+          return text;
         }
       } catch (error) {
   
@@ -321,6 +536,7 @@ Output ONLY the generated prompt.`
       setIsTyping(false);
       setIsImpersonating(false);
     }
+    return "";
   };
 
   const handleSend = async () => {
@@ -338,7 +554,6 @@ Output ONLY the generated prompt.`
     
     const updatedMessages = [...messages, newMessage];
     setMessages(updatedMessages);
-    setInput("");
     setIsTyping(true);
 
     try {
@@ -397,38 +612,6 @@ Output ONLY the generated prompt.`
     }
   };
   
-  const renderDynamicText = (text: string) => {
-    if (!text) return null;
-
-    const parts = text.split(/(\*.*?\*|".*?")/g);
-
-    return (
-      <>
-        {parts.map((part, i) => {
-          if (part.startsWith("*") && part.endsWith("*")) {
-            return (
-              <i 
-                key={i} 
-                style={{ color: "#94a3b8", fontStyle: "italic", fontWeight: 400 }}
-              >
-                {part.slice(1, -1)}
-              </i>
-            );
-          } else if (part.startsWith('"') && part.endsWith('"')) {
-            return (
-              <b 
-                key={i} 
-                style={{ color: "#ffffff", fontWeight: 700 }}
-              >
-                {part}
-              </b>
-            );
-          }
-          return <span key={i} style={{ color: "#e0e0e0" }}>{part}</span>;
-        })}
-      </>
-    );
-  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -449,29 +632,48 @@ Output ONLY the generated prompt.`
           })
         });
         
-        if (response.ok) {
-          const blob = await response.json(); // Some Kokoro-FastAPI wrappers return JSON, others return direct audio.
-          // Wait, the OpenAI spec says it returns the audio directly.
-          const audioBlob = await response.blob();
-          const audioUrl = URL.createObjectURL(audioBlob);
-          const audio = new Audio(audioUrl);
-          audio.play();
-          return;
+          if (response.ok) {
+            const audioBlob = await response.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+            currentAudioRef.current = audio;
+            setIsSpeaking(true);
+            audio.onended = () => {
+              setIsSpeaking(false);
+              currentAudioRef.current = null;
+            };
+            audio.play();
+            return;
+          }
+        } catch (e) {
+          setIsSpeaking(false);
         }
-      } catch (e) {
-
       }
-    }
-
-    // High-Fidelity Fallback: Browser WebSpeech Oracle
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.9;
-      utterance.pitch = 1.0;
-      window.speechSynthesis.speak(utterance);
-    }
-  };
+  
+      // High-Fidelity Fallback: Browser WebSpeech Oracle
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        window.speechSynthesis.speak(utterance);
+      }
+    };
+  
+    const stopSpeak = useCallback(() => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.src = "";
+        currentAudioRef.current = null;
+      }
+      setIsSpeaking(false);
+    }, []);
 
   useEffect(() => {
     scrollToBottom();
@@ -481,128 +683,77 @@ Output ONLY the generated prompt.`
   const currentUserName = currentSettings.userName || "Traveller";
   const currentUserImage = currentSettings.userImage || "/characters/mystery.png";
 
+  const handleGenerateImageCallback = useCallback((index: number) => handleGenerateImage(index), [handleGenerateImage]);
+  const handleSpeakCallback = useCallback((text: string) => handleSpeak(text), [handleSpeak]);
+  const handleStopSpeakCallback = useCallback(() => stopSpeak(), [stopSpeak]);
+  const handleCancelGenerateImageCallback = useCallback((index: number) => handleCancelGenerateImage(index), [handleCancelGenerateImage]);
+
+  const messageList = useMemo(() => messages.map((msg, index) => {
+    const isUser = msg.type === "user" || msg.sender === currentUserName || msg.sender === "You";
+    return (
+      <ChatMessage 
+        key={index}
+        index={index}
+        msg={msg}
+        isUser={isUser}
+        currentUserImage={currentUserImage}
+        onGenerateImage={handleGenerateImageCallback}
+        onCancelGenerateImage={handleCancelGenerateImageCallback}
+        onSpeak={handleSpeakCallback}
+        onStopSpeak={handleStopSpeakCallback}
+        isSpeakingAnywhere={isSpeaking}
+      />
+    );
+  }), [messages, currentUserName, currentUserImage, handleGenerateImageCallback, handleCancelGenerateImageCallback, handleSpeakCallback, handleStopSpeakCallback, isSpeaking]);
+
+  const handleImpersonateCallback = useCallback(() => handleImpersonate(), [handleImpersonate]);
+  const handleSendCallback = useCallback((val: string) => {
+    handleSendWithVal(val);
+  }, [messages, character]); 
+
+  // Re-define handleSend to accept value
+  const handleSendWithVal = async (val: string) => {
+    if (!val.trim() || !character) return;
+    const settings = getTavernSettings();
+    const newMessage: Message = { sender: settings.userName || "You", content: val, type: "user", avatar: settings.userImage };
+    const updatedMessages = [...messages, newMessage];
+    setMessages(updatedMessages);
+    setIsTyping(true);
+    try {
+      const chatMessages = buildChatMessages({ name: character.name, desc: character.description || character.desc, personality: character.personality, scenario: character.scenario, mes_example: character.mes_example, userName: settings.userName, userPersona: settings.userPersona }, updatedMessages);
+      const response = await fetch(`/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: chatMessages, settings, modelId: settings.modelId || "glm-5", options: { max_tokens: 800, stop: ["\nYou:", "\nUser:", "###", `\n${character.name}:`] } }) });
+      if (!response.ok) { setIsTyping(false); return; }
+      const data = await response.json();
+      const rawText = data.choices[0].text.trim();
+      setIsTyping(false);
+      setMessages(prev => [...prev, { sender: character.name, content: rawText, type: "character", avatar: character.image }]);
+    } catch (error) {
+      setIsTyping(false);
+      setMessages(prev => [...prev, { sender: "System", content: "*The connection was lost...*", type: "narrator" }]);
+    }
+  };
+
   return (
     <div className={`${styles.chatContainer} animate-entrance`}>
       <div className={styles.messages}>
-        {messages.map((msg, index) => {
-          const isUser = msg.type === "user" || msg.sender === currentUserName || msg.sender === "You";
-          const displayType = isUser ? "user" : msg.type;
-
-          return (
-            <div key={index} className={styles.message}>
-              {displayType === "narrator" ? (
-                <p className={styles.narrator}>{renderDynamicText(msg.content)}</p>
-              ) : (
-                <div className={displayType === "user" ? styles.userWrapper : styles.charWrapper}>
-                  {(msg.avatar || (displayType === "user" && currentUserImage)) && (
-                    <div className={styles.avatarContainer}>
-                      <Image src={msg.avatar || currentUserImage} alt={msg.sender} fill className={styles.avatar} />
-                    </div>
-                  )}
-                  
-                  <div className={styles.messageBody}>
-                    <div className={styles.metadata}>
-                      <span className={displayType === "user" ? styles.userName : styles.name} style={{ fontSize: '1.4rem' }}>
-                        {msg.sender}
-                      </span>
-                    </div>
-                    <div className={`${styles.content} ${displayType === "user" ? styles.userGlass : "obsidianParchment"}`}>
-                      {renderDynamicText(msg.content)}
-                    </div>
-
-                    <div className={styles.messageAddons} style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <div style={{ display: 'flex', justifyContent: displayType === "user" ? 'flex-end' : 'flex-end' }}>
-                        <button 
-                          className={styles.miniTool} 
-                          onClick={() => handleGenerateImage(index)}
-                          title="Generate Image"
-                          style={{ 
-                            opacity: 0.4, transition: 'all 0.2s', background: 'transparent',
-                            border: 'none', color: 'var(--accent-gold)', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '4px'
-                          }}
-                        >
-                          <ImageIcon size={14} />
-                          <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Image</span>
-                        </button>
-                        <button 
-                          className={styles.miniTool} 
-                          onClick={() => handleSpeak(msg.content)}
-                          title="Speak Text"
-                          style={{ 
-                            opacity: 0.4, transition: 'all 0.2s', background: 'transparent',
-                            border: 'none', color: 'var(--accent-gold)', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '12px'
-                          }}
-                        >
-                          <Volume2 size={14} />
-                          <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Speak</span>
-                        </button>
-                      </div>
-
-                      {msg.isGeneratingImage && (
-                        <div style={{ alignSelf: displayType === "user" ? 'flex-end' : 'flex-start', color: 'var(--accent-gold)', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', border: '1px solid var(--glass-border)' }}>
-                          <Sparkles className="spin" size={14} /> <span>Generating image...</span>
-                        </div>
-                      )}
-
-                      {msg.imageUrl && (
-                        <div className={styles.inlineImageWrapper} style={{ alignSelf: displayType === "user" ? 'flex-end' : 'flex-start', width: '70%', maxWidth: '400px' }}>
-                          <img src={msg.imageUrl} alt="Generated Image" style={{ width: '100%', borderRadius: '4px', border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {messageList}
 
         {isTyping && character && (
-          <div className={styles.narrator} style={{ opacity: 0.5 }}>
+          <div className={styles.narrator} style={{ opacity: 0.5, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Loader2 className="spin" size={14} />
             {isImpersonating ? `${currentUserName} is choosing words...` : `${character.name} is choosing words...`}
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className={styles.inputArea}>
-        <div className={styles.toolCluster}>
-          <button 
-            className={styles.toolButton} 
-            onClick={handleImpersonate} 
-            disabled={isTyping}
-            title="Impersonate User"
-          >
-            <Wand2 size={20} />
-          </button>
-          <button className={styles.toolButton}>
-            <Volume2 size={20} />
-          </button>
-        </div>
-        
-        <div className={styles.inputWrapper}>
-          <textarea
-            className={styles.textarea}
-            placeholder={isTyping ? "Generating..." : "Type your story... (use * for actions)"}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
-            rows={1}
-            disabled={isTyping}
-          />
-          <button 
-            className={styles.sendButton} 
-            onClick={handleSend}
-            disabled={isTyping || !input.trim()}
-          >
-            <Send size={20} className={isTyping ? "spin" : ""} />
-          </button>
-        </div>
-      </div>
+      <ChatInput 
+        disabled={isTyping} 
+        onSend={handleSendCallback} 
+        onImpersonate={handleImpersonateCallback}
+        onStopSpeak={handleStopSpeakCallback}
+        isSpeakingAnywhere={isSpeaking}
+      />
     </div>
   );
 }
