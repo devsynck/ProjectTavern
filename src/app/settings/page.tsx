@@ -14,9 +14,7 @@ export default function SettingsPage() {
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [comfyStatus, setComfyStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [activeModels, setActiveModels] = useState<string[]>([]);
-  const [workflows, setWorkflows] = useState<{ id: string; name: string; json: string }[]>([
-    { id: "default-wf", name: "Classic Portrait", json: '{"6":{"inputs":{"text":"masterpiece, high quality, 1human, portrait"},"class_type":"CLIPTextEncode"},"8":{"inputs":{"samples":["3",0],"vae":["4",0]},"class_type":"VAEDecode"}}' }
-  ]);
+  const [workflows, setWorkflows] = useState<{ id: string; name: string; json: string }[]>(DEFAULT_CONFIGURATION.workflows);
   const [defaultWorkflowId, setDefaultWorkflowId] = useState<string>("default-wf");
   const [editingWorkflow, setEditingWorkflow] = useState<{ id: string; name: string; json: string } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -112,6 +110,14 @@ export default function SettingsPage() {
     });
     setIsModalOpen(false);
     setEditingWorkflow(null);
+  };
+
+  const handleResetWorkflows = () => {
+    if (confirm("Reset all templates to system defaults? This will erase your custom templates.")) {
+      setWorkflows(DEFAULT_CONFIGURATION.workflows);
+      setDefaultWorkflowId(DEFAULT_CONFIGURATION.defaultWorkflowId);
+      showNotification("Workflows reset to defaults. Remember to click Save Settings.", "success");
+    }
   };
 
   const deleteWorkflow = (id: string, e: React.MouseEvent) => {
@@ -340,9 +346,18 @@ export default function SettingsPage() {
               <section className={styles.section}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <div className={styles.title} style={{ marginBottom: 0 }}>Template Manager</div>
-                  <button className="btn-premium" style={{ height: '36px', padding: '0 16px' }} onClick={openAddModal}>
-                    + New Template
-                  </button>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button 
+                      className={styles.input} 
+                      style={{ height: '36px', padding: '0 16px', cursor: 'pointer', background: 'rgba(255,255,255,0.05)' }} 
+                      onClick={handleResetWorkflows}
+                    >
+                      Reset to Defaults
+                    </button>
+                    <button className="btn-premium" style={{ height: '36px', padding: '0 16px' }} onClick={openAddModal}>
+                      + New Template
+                    </button>
+                  </div>
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>

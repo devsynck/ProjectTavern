@@ -41,7 +41,11 @@ export interface TavernConfiguration {
 export const DEFAULT_CONFIGURATION: TavernConfiguration = {
   settings: DEFAULT_SETTINGS,
   workflows: [
-    { id: "default-wf", name: "Classic Portrait", json: '{"6":{"inputs":{"text":"masterpiece, high quality, 1human, portrait"},"class_type":"CLIPTextEncode"},"8":{"inputs":{"samples":["3",0],"vae":["4",0]},"class_type":"VAEDecode"}}' }
+    { 
+      id: "default-wf", 
+      name: "Classic Portrait", 
+      json: '{"3":{"inputs":{"seed":0,"steps":20,"cfg":8,"sampler_name":"euler","scheduler":"normal","denoise":1,"model":["4",0],"positive":["6",0],"negative":["7",0],"latent_image":["5",0]},"class_type":"KSampler"},"4":{"inputs":{"ckpt_name":"v1-5-pruned-emaonly.ckpt"},"class_type":"CheckpointLoaderSimple"},"5":{"inputs":{"width":512,"height":512,"batch_size":1},"class_type":"EmptyLatentImage"},"6":{"inputs":{"text":"masterpiece, high quality, 1human, portrait","clip":["4",1]},"class_type":"CLIPTextEncode"},"7":{"inputs":{"text":"low quality, bad quality, blurry","clip":["4",1]},"class_type":"CLIPTextEncode"},"8":{"inputs":{"samples":["3",0],"vae":["4",2]},"class_type":"VAEDecode"},"9":{"inputs":{"filename_prefix":"Tavern","images":["8",0]},"class_type":"SaveImage"}}'
+    }
   ],
   defaultWorkflowId: "default-wf"
 };

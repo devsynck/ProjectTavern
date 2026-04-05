@@ -218,7 +218,13 @@ Output ONLY the generated prompt.`
       // Identify text nodes (CLIPTextEncode) and apply the generated description
       for (const key in workflowJson) {
         if (workflowJson[key].class_type === "CLIPTextEncode") {
-          workflowJson[key].inputs.text = promptBase;
+          const node = workflowJson[key];
+          // Heuristic: Skip if it looks like a negative prompt node
+          const text = node.inputs?.text?.toLowerCase() || "";
+          if (text.includes("low quality") || text.includes("bad anatomy") || text.includes("negative")) {
+            continue;
+          }
+          node.inputs.text = promptBase;
         }
       }
 
