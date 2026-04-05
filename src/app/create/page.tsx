@@ -400,35 +400,72 @@ function CreateCharacterForm() {
           </section>
         </div>
         <div className={styles.sidebar}>
+          <section className={styles.section} style={{ background: 'rgba(197, 160, 89, 0.05)', position: 'relative' }}>
+            <div className={styles.sectionTitle}><Wand2 size={20} /><span>Visual Identity</span></div>
+            
+            <div style={{ 
+              position: 'relative', width: '150px', height: '150px', margin: '0 auto 20px',
+              background: 'rgba(0,0,0,0.5)', borderRadius: '4px', overflow: 'hidden',
+              border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+            }}>
+              <img src={character.image} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {isGeneratingImage && (
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <Sparkles className="spin glow-gold" size={24} />
+                  <span style={{ fontSize: '0.6rem', color: 'var(--accent-gold)', textTransform: 'uppercase' }}>Generating...</span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button 
+                className="btn-premium" 
+                style={{ width: '100%', height: '36px', fontSize: '0.8rem' }}
+                onClick={handleGenerateImage}
+                disabled={isGeneratingImage}
+              >
+                <Sparkles size={14} />
+                <span>{isGeneratingImage ? "Processing..." : "Generate with AI"}</span>
+              </button>
+              
+              <label 
+                className={styles.input} 
+                style={{ 
+                  width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', 
+                  justifyContent: 'center', gap: '8px', fontSize: '0.8rem', padding: '8px' 
+                }}
+              >
+                <Upload size={14} />
+                <span>Upload from PC</span>
+                <input 
+                  type="file" 
+                  style={{ display: 'none' }} 
+                  accept="image/*" 
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        setCharacter(prev => ({ ...prev, image: reader.result as string }));
+                        showNotification("Custom portrait mapped.", "success");
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }} 
+                />
+              </label>
+            </div>
+          </section>
+
           {!isUserProfileMode && (
             <section className={styles.section}>
               <div className={styles.sectionTitle}><MessageSquare size={20} /><span>Greeting Messages</span></div>
-              <div className={styles.field}><label className={styles.label}>Main Greeting</label><textarea className={styles.input} value={character.firstMessage} onChange={(e) => handleChange("firstMessage", e.target.value)} /></div>
+              <div className={styles.field}><label className={styles.label}>Main Greeting</label><textarea className={styles.input} style={{ minHeight: '100px' }} value={character.firstMessage} onChange={(e) => handleChange("firstMessage", e.target.value)} /></div>
             </section>
           )}
           <section className={styles.section}>
             <div className={styles.sectionTitle}><BrainCircuit size={20} /><span>Advanced Directives</span></div>
             <div className={styles.field}><label className={styles.label}>System Prompt Override (JSON/Logic)</label><textarea className={styles.input} value={character.system_prompt} onChange={(e) => handleChange("system_prompt", e.target.value)} /></div>
-          </section>
-          <section className={styles.section} style={{ background: 'rgba(197, 160, 89, 0.05)' }}>
-            <div className={styles.sectionTitle}><Wand2 size={20} /><span>Profile Image</span></div>
-            <div style={{ position: 'relative', aspectRatio: '1/1', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', border: '1px dashed var(--glass-border)', overflow: 'hidden' }}>
-              <img src={character.image} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              {isGeneratingImage && (
-                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                  <Sparkles className="spin glow-gold" size={32} />
-                  <span style={{ fontSize: '0.7rem', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '1px' }}>Generating...</span>
-                </div>
-              )}
-            </div>
-            <button 
-              className={styles.input} 
-              style={{ width: '100%', color: 'var(--accent-gold)', cursor: 'pointer' }}
-              onClick={handleGenerateImage}
-              disabled={isGeneratingImage}
-            >
-              {isGeneratingImage ? "Processing..." : "Generate Profile Image"}
-            </button>
           </section>
         </div>
       </div>

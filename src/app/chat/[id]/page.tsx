@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect, use, memo, useCallback, useMemo } from "react";
 import Image from "next/image";
-import { Send, Image as ImageIcon, Volume2, Wand2, Plus, Sparkles, Bot, Loader2 } from "lucide-react";
+import { Send, Image as ImageIcon, Volume2, VolumeX, Wand2, Plus, Sparkles, Bot, Loader2 } from "lucide-react";
 import styles from "../chat.module.css";
 import { buildTavernPrompt, buildChatMessages } from "@/utils/promptBuilder";
-import { getTavernSettings, syncSettings } from "@/utils/settings";
+import { getTavernSettings, syncSettings, saveTavernSettings } from "@/utils/settings";
 import { useNotification } from "@/components/NotificationProvider";
 import { tavernDB } from "@/utils/db";
 
@@ -148,13 +148,17 @@ const ChatInput = memo(({
   onSend, 
   onImpersonate,
   onStopSpeak,
-  isSpeakingAnywhere
+  isSpeakingAnywhere,
+  autoTTS,
+  onToggleAutoTTS
 }: { 
   disabled: boolean, 
   onSend: (val: string) => void, 
   onImpersonate: () => Promise<string | void>,
   onStopSpeak: () => void,
-  isSpeakingAnywhere: boolean
+  isSpeakingAnywhere: boolean,
+  autoTTS: boolean,
+  onToggleAutoTTS: () => void
 }) => {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -176,15 +180,20 @@ const ChatInput = memo(({
         <button className={styles.toolButton} onClick={handleImpersonateClick} disabled={disabled} title="Impersonate User">
           <Wand2 size={20} />
         </button>
-        {isSpeakingAnywhere ? (
+        {isSpeakingAnywhere && (
           <button className={styles.toolButton} onClick={onStopSpeak} style={{ color: '#f87171' }} title="Stop Audio">
             <Loader2 className="spin" size={20} />
           </button>
-        ) : (
-          <button className={styles.toolButton} title="Audio Oracle">
-            <Volume2 size={20} />
-          </button>
         )}
+        <button 
+          className={styles.toolButton} 
+          onClick={onToggleAutoTTS} 
+          style={{ color: autoTTS ? 'var(--accent-gold)' : 'var(--text-muted)' }} 
+          title={autoTTS ? "Auto-TTS Enabled" : "Auto-TTS Disabled"}
+        >
+          {autoTTS ? <Volume2 size={20} /> : <VolumeX size={20} />}
+          {autoTTS && <div style={{ position: 'absolute', top: '6px', right: '6px', width: '6px', height: '6px', background: 'var(--accent-gold)', borderRadius: '50%', boxShadow: '0 0 5px var(--accent-gold)' }} />}
+        </button>
       </div>
       
       <div className={styles.inputWrapper}>
@@ -224,6 +233,14 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const abortControllers = useRef<Record<number, AbortController>>({});
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [autoTTS, setAutoTTS] = useState(false);
+
+  const toggleAutoTTS = useCallback(async () => {
+    const config = await syncSettings();
+    const nextValue = !config.settings.autoTTS;
+    setAutoTTS(nextValue);
+    await saveTavernSettings({ autoTTS: nextValue });
+  }, []);
 
   const replaceMacros = (text: string, charName: string) => {
     if (!text) return "";
@@ -281,6 +298,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       }
     };
     loadSessionConfigs();
+    
+    syncSettings().then(cfg => {
+      setAutoTTS(cfg.settings.autoTTS);
+    });
   }, [id]);
 
   useEffect(() => {
@@ -746,6 +767,11 @@ Output ONLY the generated prompt.`
       if (settings.autoGenerateImages) {
         handleGenerateImage(finalMessages.length - 1, finalMessages);
       }
+
+      // Auto-TTS Hook
+      if (autoTTS) {
+        handleSpeak(rawText);
+      }
     } catch (error) {
       setIsTyping(false);
       setMessages(prev => [...prev, { sender: "System", content: "*The connection was lost...*", type: "narrator" }]);
@@ -761,7 +787,7 @@ Output ONLY the generated prompt.`
           <div className={styles.typingIndicator}>
             <Loader2 className="spin" size={16} />
             <span className={styles.typingText}>
-              {isImpersonating ? `${currentUserName} is choosing words...` : `${character.name} is choosing words...`}
+              {isImpersonating ? `${currentUserName} is replying...` : `${character.name} is replying...`}
             </span>
           </div>
         )}
@@ -774,6 +800,8 @@ Output ONLY the generated prompt.`
         onImpersonate={handleImpersonateCallback}
         onStopSpeak={handleStopSpeakCallback}
         isSpeakingAnywhere={isSpeaking}
+        autoTTS={autoTTS}
+        onToggleAutoTTS={toggleAutoTTS}
       />
     </div>
   );

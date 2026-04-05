@@ -8,6 +8,7 @@ export interface TavernSettings {
   comfyUrl: string;
   enableImageGen: boolean;
   autoGenerateImages: boolean;
+  autoTTS: boolean;
   userName: string;
   userPersona: string;
   userImage: string;
@@ -26,6 +27,7 @@ export const DEFAULT_SETTINGS: TavernSettings = {
   comfyUrl: "http://127.0.0.1:8188",
   enableImageGen: true,
   autoGenerateImages: false,
+  autoTTS: false,
   userName: "User",
   userPersona: "A user of Project Tavern.",
   userImage: "/characters/mystery.png",
